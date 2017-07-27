@@ -49,14 +49,15 @@ class NetworkStreamWorker {
 
     virtual void outputAvailable();
     virtual void setOutputFifo(FIFO<CSAMPLE>* pOutputFifo);
+    virtual FIFO<CSAMPLE>* getOutputFifo();
 
     virtual bool threadWaiting();
 
-    static int getState();
-    static int getFunctionCode();
-    static int getRunCount();
+    int getState();
+    int getFunctionCode();
+    int getRunCount();
 
-    static void debugState();
+    void debugState();
 
 protected:
     void setState(int state);
@@ -64,9 +65,9 @@ protected:
     void incRunCount();
     
 private:
-    static int s_networkStreamWorkerState;
-    static int s_functionCode;
-    static int s_runCount;
+    int s_networkStreamWorkerState;
+    int s_functionCode;
+    int s_runCount;
 };
 
 

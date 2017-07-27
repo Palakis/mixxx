@@ -38,9 +38,7 @@ EngineBroadcast::EngineBroadcast(UserSettingsPointer pConfig,
                                  QSharedPointer<EngineNetworkStream> pNetworkStream)
         : m_settings(pBroadcastSettings),
           m_pConfig(pConfig),
-          m_pNetworkStream(pNetworkStream),
-          m_threadWaiting(false),
-          m_pOutputFifo(nullptr) {
+          m_pNetworkStream(pNetworkStream) {
     const bool persist = true;
 
     m_pBroadcastEnabled = new ControlPushButton(
@@ -71,8 +69,6 @@ EngineBroadcast::EngineBroadcast(UserSettingsPointer pConfig,
     connect(m_settings.data(), SIGNAL(profilesChanged()),
             this, SLOT(slotProfilesChanged()));
 
-    setState(NETWORKSTREAMWORKER_STATE_INIT);
-
     // Initialize libshout
     shout_init();
 }
@@ -81,17 +77,6 @@ EngineBroadcast::~EngineBroadcast() {
     delete m_pStatusCO;
 
     m_pBroadcastEnabled->set(0);
-    m_readSema.release();
-
-    // Wait maximum ~4 seconds. User will get annoyed but
-    // if there is some network problems we let them settle
-    wait(4000);
-
-    // Signal user if thread doesn't die
-    VERIFY_OR_DEBUG_ASSERT(!isRunning()) {
-       qWarning() << "EngineBroadcast:~EngineBroadcast(): Thread didn't die.\
-       Ignored but file a bug report if problems rise!";
-    }
 
     shout_shutdown();
 }
@@ -105,10 +90,12 @@ bool EngineBroadcast::addConnection(BroadcastProfilePtr profile) {
     if(m_connections.contains(profileName))
         return false;
 
-    int fifoSize = m_pNetworkStream->getNumOutputChannels() * kBufferFrames;
+    ShoutOutputPtr output(new ShoutOutput(profile, m_pConfig));
 
-    ShoutOutputPtr output(new ShoutOutput(profile, m_pConfig, fifoSize));
+    m_connectionsMutex.lock();
     m_connections.insert(profileName, output);
+    m_pNetworkStream->addWorker(output);
+    m_connectionsMutex.unlock();
 
     qDebug() << "EngineBroadcast::addConnection: created connection for profile" << profileName;
     return true;
@@ -118,7 +105,10 @@ bool EngineBroadcast::removeConnection(BroadcastProfilePtr profile) {
     if(!profile)
         return false;
 
+    m_connectionsMutex.lock();
     ShoutOutputPtr output = m_connections.take(profile->getProfileName());
+    m_connectionsMutex.unlock();
+
     if(output) {
         // Disabling the profile tells ShoutOutput's thread to disconnect
         output->profile()->setEnabled(false);
@@ -128,143 +118,6 @@ bool EngineBroadcast::removeConnection(BroadcastProfilePtr profile) {
     }
 
     return false;
-}
-
-void EngineBroadcast::process(const CSAMPLE* pBuffer, const int iBufferSize) {
-    setFunctionCode(4);
-
-    QList<ShoutOutputPtr> connections = m_connections.values();
-    for(ShoutOutputPtr c : connections) {
-        if(!c)
-            continue;
-
-        if(!c->threadWaiting())
-            continue;
-
-        FIFO<CSAMPLE>* cFifo = c->getOutputFifo();
-        if(cFifo) {
-            int available = cFifo->writeAvailable();
-
-            int copyCount = math_min(available, iBufferSize);
-            if(copyCount > 0) {
-                cFifo->write(pBuffer, copyCount);
-            } else {
-                // A full FIFO queue means that its associated thread
-                // is stalled. In that case, flush the queue
-                // and push silence
-                CSAMPLE* dataPtr1;
-                ring_buffer_size_t size1;
-                CSAMPLE* dataPtr2;
-                ring_buffer_size_t size2;
-
-                cFifo->flushReadData(cFifo->readAvailable());
-                int clearCount =
-                        math_min(cFifo->writeAvailable(), iBufferSize);
-
-                (void)cFifo->aquireWriteRegions(clearCount,
-                        &dataPtr1, &size1, &dataPtr2, &size2);
-                SampleUtil::clear(dataPtr1,size1);
-                if (size2 > 0) {
-                    SampleUtil::clear(dataPtr2,size2);
-                }
-                cFifo->releaseWriteRegions(clearCount);
-            }
-
-            // ----
-            // Below is code replicating the behaviour of
-            // EngineNetworkStream::writingDone(int interval).
-            // This function is called by SoundDeviceNetwork when
-            // enough frames are available for streaming.
-
-            // As SoundDeviceNetwork uses writingDone, the "interval" parameter
-            // passed to the latter is the number of bytes written (copyCount).
-            // We have that too here, so we use it.
-            int interval = copyCount;
-            int outputChannels = m_pNetworkStream->getNumOutputChannels();
-
-            // Same formula as in EngineNetworkStream::writingDone:
-            // "Check for desired kNetworkLatencyFrames + 1/2 interval to
-            // avoid big jitter due to interferences with sync code"
-            if(cFifo->readAvailable() + interval / 2
-                    >= (outputChannels * kNetworkLatencyFrames)) {
-                c->outputAvailable();
-            }
-        }
-    }
-}
-
-// Is called from the Mixxx engine thread
-void EngineBroadcast::outputAvailable() {
-    m_readSema.release();
-}
-
-// Is called from the Mixxx engine thread
-void EngineBroadcast::setOutputFifo(FIFO<CSAMPLE>* pOutputFifo) {
-    m_pOutputFifo = pOutputFifo;
-}
-
-void EngineBroadcast::run() {
-    QThread::currentThread()->setObjectName("EngineBroadcast");
-    qDebug() << "EngineBroadcast::run: Starting thread";
-
-    VERIFY_OR_DEBUG_ASSERT(m_pOutputFifo) {
-        qDebug() << "EngineBroadcast::run: Broadcast FIFO handle is not available. Aborting";
-        return;
-    }
-
-    if(m_pOutputFifo->readAvailable()) {
-        m_pOutputFifo->flushReadData(m_pOutputFifo->readAvailable());
-    }
-    m_threadWaiting = true; // no frames received without this
-    m_pStatusCO->forceSet(STATUSCO_CONNECTING);
-
-    while(true) {
-        setFunctionCode(1);
-        incRunCount();
-        m_readSema.acquire();
-
-        // Stop the thread if broadcasting is turned off
-        if (!m_pBroadcastEnabled->toBool()) {
-            qDebug() << "EngineBroadcast::run: Broadcasting disabled. Terminating thread";
-            m_threadWaiting = false;
-            setFunctionCode(2);
-            break;
-        }
-
-        // TODO(Palakis): have this value governed by the connections' statuses
-
-        m_pStatusCO->forceSet(STATUSCO_CONNECTED);
-
-        int readAvailable = m_pOutputFifo->readAvailable();
-        if (readAvailable) {
-            setFunctionCode(3);
-
-            CSAMPLE* dataPtr1;
-            ring_buffer_size_t size1;
-            CSAMPLE* dataPtr2;
-            ring_buffer_size_t size2;
-
-            // We use size1 and size2, so we can ignore the return value
-            (void)m_pOutputFifo->aquireReadRegions(readAvailable, &dataPtr1, &size1,
-                    &dataPtr2, &size2);
-
-            process(dataPtr1, size1);
-            if (size2 > 0) {
-                process(dataPtr2, size2);
-            }
-
-            m_pOutputFifo->releaseReadRegions(readAvailable);
-        }
-    }
-
-    m_threadWaiting = false;
-    m_pStatusCO->forceSet(STATUSCO_UNCONNECTED);
-
-    qDebug() << "EngineBroadcast::run: Thread stopped";
-}
-
-bool EngineBroadcast::threadWaiting() {
-    return m_threadWaiting;
 }
 
 void EngineBroadcast::slotEnableCO(double v) {
@@ -277,8 +130,6 @@ void EngineBroadcast::slotEnableCO(double v) {
     }
 
     if (v > 0.0) {
-        start(QThread::HighPriority);
-        setState(NETWORKSTREAMWORKER_STATE_CONNECTING);
         slotProfilesChanged();
     }
 }

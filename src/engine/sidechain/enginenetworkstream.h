@@ -1,6 +1,8 @@
 #ifndef ENGINENETWORKSTREAM_H_
 #define ENGINENETWORKSTREAM_H_
 
+#include <QList>
+
 #include "util/types.h"
 #include "util/fifo.h"
 #include "engine/sidechain/networkstreamworker.h"
@@ -48,7 +50,8 @@ class EngineNetworkStream {
     qint64 m_streamStartTimeUs;
     qint64 m_streamFramesWritten;
     qint64 m_streamFramesRead;
-    QSharedPointer<NetworkStreamWorker> m_pWorker;
+
+    QList<QSharedPointer<NetworkStreamWorker>> m_workers;
     int m_writeOverflowCount;
 };
 

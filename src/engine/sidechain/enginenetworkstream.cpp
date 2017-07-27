@@ -90,22 +90,15 @@ int EngineNetworkStream::getReadExpected() {
 }
 
 void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
-    if (m_pWorker.isNull()) {
-        return;
-    }
-
-    //qDebug() << "EngineNetworkStream::write()" << frames;
-    if (!m_pWorker->threadWaiting()) {
-        // no thread waiting, so we can advance the stream without
-        // buffering
-        m_streamFramesWritten += frames;
+    /*
+    if(!m_pWorker->threadWaiting()) {
+        m_streamFramesWrittent += frames;
         return;
     }
     int writeAvailable = m_pOutputFifo->writeAvailable();
     int writeRequired = frames * m_numOutputChannels;
     if (writeAvailable < writeRequired) {
         qDebug() << "EngineNetworkStream::write() buffer full, loosing samples";
-        NetworkStreamWorker::debugState();
         m_writeOverflowCount++;
     }
     int copyCount = math_min(writeAvailable, writeRequired);
@@ -117,54 +110,97 @@ void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
         // stream by writing silence, once the buffer is free.
         m_streamFramesWritten += copyCount / m_numOutputChannels;
     }
+    */
+
+    for(auto worker : m_workers) {
+        if(worker.isNull()) {
+            continue;
+        }
+
+        if(!worker->threadWaiting()) {
+            // TODO(Palakis): do the same as "m_streamFramesWritten += frames"
+            continue;
+        }
+
+        FIFO<CSAMPLE>* workerFifo = worker->getOutputFifo();
+        if(workerFifo) {
+            int writeAvailable = workerFifo->writeAvailable();
+            int writeRequired = frames * m_numOutputChannels;
+            if(writeAvailable < writeRequired) {
+                qDebug() << "EngineNetworkStream::write() : worker buffer full, loosing samples";
+                // TODO(Palakis): count overflows (same as "m_writeOverflowCount++")
+            }
+
+            int copyCount = math_min(writeAvailable, writeRequired);
+            if(copyCount > 0) {
+                (void)workerFifo->write(buffer, copyCount);
+            }
+        }
+    }
+
+    // TODO(Palakis): advance only with frames actually written (see commented section above)
+    m_streamFramesWritten += frames;
 }
 
 void EngineNetworkStream::writeSilence(int frames) {
-    if (m_pWorker.isNull()) {
-        return;
-    }
-    //qDebug() << "EngineNetworkStream::writeSilence()" << frames;
-    if (!m_pWorker->threadWaiting()) {
-        // no thread waiting, so we can advance the stream without
-        // buffering
-        m_streamFramesWritten += frames;
-        return;
-    }
-    int writeAvailable = m_pOutputFifo->writeAvailable();
-    int writeRequired = frames * m_numOutputChannels;
-    if (writeAvailable < writeRequired) {
-        qDebug() << "EngineNetworkStream::writeSilence() buffer full";
-        NetworkStreamWorker::debugState();
-    }
-    int clearCount = math_min(writeAvailable, writeRequired);
-    if (clearCount > 0) {
-        CSAMPLE* dataPtr1;
-        ring_buffer_size_t size1;
-        CSAMPLE* dataPtr2;
-        ring_buffer_size_t size2;
-        (void)m_pOutputFifo->aquireWriteRegions(clearCount,
-                &dataPtr1, &size1, &dataPtr2, &size2);
-        SampleUtil::clear(dataPtr1,size1);
-        if (size2 > 0) {
-            SampleUtil::clear(dataPtr2,size2);
+    for(auto worker : m_workers) {
+        if(worker.isNull()) {
+            continue;
         }
-        m_pOutputFifo->releaseWriteRegions(clearCount);
 
-        // we advance the frame only by the samples we have actually cleared
-        m_streamFramesWritten += clearCount / m_numOutputChannels;
+        if(!worker->threadWaiting()) {
+            // TODO(Palakis): do the same as "m_streamFramesWritten += frames"
+            continue;
+        }
+
+        FIFO<CSAMPLE>* workerFifo = worker->getOutputFifo();
+        if(workerFifo) {
+            int writeAvailable = workerFifo->writeAvailable();
+            int writeRequired = frames * m_numOutputChannels;
+            if(writeAvailable < writeRequired) {
+                qDebug() <<
+                        "EngineNetworkStream::writeSilence() : worker buffer full, loosing samples";
+                // TODO(Palakis): count overflows (same as "m_writeOverflowCount++")
+            }
+
+            int clearCount = math_min(writeAvailable, writeRequired);
+            if(clearCount > 0) {
+                CSAMPLE* dataPtr1;
+                ring_buffer_size_t size1;
+                CSAMPLE* dataPtr2;
+                ring_buffer_size_t size2;
+
+                (void)workerFifo->aquireWriteRegions(clearCount,
+                        &dataPtr1, &size1, &dataPtr2, &size2);
+                SampleUtil::clear(dataPtr1, size1);
+                if(size2 > 0) {
+                    SampleUtil::clear(dataPtr2, size2);
+                }
+                workerFifo->releaseWriteRegions(clearCount);
+            }
+        }
     }
+
+    m_streamFramesWritten += frames;
 }
 
 void EngineNetworkStream::writingDone(int interval) {
-    // Signal worker if any
-    if (m_pWorker.isNull()) {
-        return;
-    }
-    // Check for desired kNetworkLatencyFrames + 1/2 interval to
-    // avoid big jitter due to interferences with sync code
-    if (m_pOutputFifo->readAvailable() + interval / 2
-            >= (m_numOutputChannels * kNetworkLatencyFrames)) {
-        m_pWorker->outputAvailable();
+    for(auto worker : m_workers) {
+        if(worker.isNull()) {
+            continue;
+        }
+
+        FIFO<CSAMPLE>* workerFifo = worker->getOutputFifo();
+        if(!workerFifo) {
+            continue;
+        }
+
+        // Check for desired kNetworkLatencyFrames + 1/2 interval to
+        // avoid big jitter due to interferences with sync code
+        if (workerFifo->readAvailable() + interval / 2
+                >= (m_numOutputChannels * kNetworkLatencyFrames)) {
+            worker->outputAvailable();
+        }
     }
 }
 
@@ -246,8 +282,8 @@ qint64 EngineNetworkStream::getNetworkTimeUs() {
 }
 
 void EngineNetworkStream::addWorker(QSharedPointer<NetworkStreamWorker> pWorker) {
-    m_pWorker = pWorker;
-    if (m_pWorker) {
-        m_pWorker->setOutputFifo(m_pOutputFifo);
+    if (pWorker && m_numOutputChannels) {
+        pWorker->setOutputFifo(new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
+        m_workers.append(pWorker);
     }
 }

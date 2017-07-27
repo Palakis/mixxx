@@ -17,7 +17,6 @@ BroadcastManager::BroadcastManager(SettingsManager* pSettingsManager,
                 new EngineBroadcast(m_pConfig,
                                     pSettingsManager->broadcastSettings(),
                                     pNetworkStream));
-        pNetworkStream->addWorker(m_pBroadcast);
     }
 
     m_pBroadcastEnabled = new ControlProxy(

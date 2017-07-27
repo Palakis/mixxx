@@ -43,7 +43,7 @@ class ShoutOutput
         STATUSCO_FAILURE = 3 // Happens when disconnected by an error
     };
 
-    ShoutOutput(BroadcastProfilePtr profile, UserSettingsPointer pConfig, int fifoSize);
+    ShoutOutput(BroadcastProfilePtr profile, UserSettingsPointer pConfig);
     virtual ~ShoutOutput();
 
     // This is called by the Engine implementation for each sample. Encode and
@@ -148,7 +148,7 @@ class ShoutOutput
     bool m_ogg_dynamic_update;
     QAtomicInt m_threadWaiting;
     QSemaphore m_readSema;
-    FIFO<CSAMPLE>* m_pOutputFifo;
+    QSharedPointer<FIFO<CSAMPLE>> m_pOutputFifo;
 
     QString m_lastErrorStr;
     int m_retryCount;

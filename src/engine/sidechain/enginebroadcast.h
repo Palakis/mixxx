@@ -3,27 +3,18 @@
 
 #include <QMessageBox>
 #include <QMutex>
-#include <QWaitCondition>
 #include <QObject>
-#include <QSemaphore>
-#include <QTextCodec>
-#include <QThread>
-#include <QVector>
 #include <QMap>
 
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
-#include "engine/sidechain/networkstreamworker.h"
 #include "preferences/usersettings.h"
-#include "util/fifo.h"
 #include "preferences/broadcastsettings.h"
 #include "engine/sidechain/shoutoutput.h"
-#include "soundio/soundmanager.h"
 
 class ControlPushButton;
 
-class EngineBroadcast
-        : public QThread, public NetworkStreamWorker {
+class EngineBroadcast : public QObject {
     Q_OBJECT
   public:
     enum StatusCOStates {
@@ -41,20 +32,6 @@ class EngineBroadcast
     bool addConnection(BroadcastProfilePtr profile);
     bool removeConnection(BroadcastProfilePtr profile);
 
-    // This is called by the Engine implementation for each sample. Encode and
-    // send the stream, as well as check for metadata changes.
-    void process(const CSAMPLE* pBuffer, const int iBufferSize);
-
-    void shutdown() {
-    }
-
-    virtual void outputAvailable();
-    virtual void setOutputFifo(FIFO<CSAMPLE>* pOutputFifo);
-
-    virtual bool threadWaiting();
-
-    virtual void run();
-
   private slots:
     void slotEnableCO(double v);
     void slotProfileAdded(BroadcastProfilePtr profile);
@@ -64,18 +41,14 @@ class EngineBroadcast
 
   private:
     QMap<QString,ShoutOutputPtr> m_connections;
+    QMutex m_connectionsMutex;
 
     BroadcastSettingsPointer m_settings;
     UserSettingsPointer m_pConfig;
     QSharedPointer<EngineNetworkStream> m_pNetworkStream;
+
     ControlPushButton* m_pBroadcastEnabled;
     ControlObject* m_pStatusCO;
-
-    QAtomicInt m_threadWaiting;
-    QSemaphore m_readSema;
-    FIFO<CSAMPLE>* m_pOutputFifo;
-
-    QMutex m_enabledMutex;
 };
 
 #endif // ENGINE_SIDECHAIN_ENGINEBROADCAST_H

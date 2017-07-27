@@ -36,7 +36,7 @@ static const int kMaxShoutFailures = 3;
 }
 
 ShoutOutput::ShoutOutput(BroadcastProfilePtr profile,
-        UserSettingsPointer pConfig, int fifoSize)
+        UserSettingsPointer pConfig)
         : m_pTextCodec(nullptr),
           m_pMetaData(),
           m_pShout(nullptr),
@@ -67,8 +67,6 @@ ShoutOutput::ShoutOutput(BroadcastProfilePtr profile,
     m_pStatusCO = new ControlObject(ConfigKey(m_pProfile->getProfileName(), "status"));
     m_pStatusCO->setReadOnly();
     m_pStatusCO->forceSet(STATUSCO_UNCONNECTED);
-
-    m_pOutputFifo = new FIFO<CSAMPLE>(fifoSize);
 
     setState(NETWORKSTREAMWORKER_STATE_INIT);
 
@@ -103,7 +101,15 @@ ShoutOutput::~ShoutOutput() {
         shout_free(m_pShout);
     }
 
-    shout_shutdown();
+    // Wait maximum ~4 seconds. User will get annoyed but
+    // if there is some network problems we let them settle
+    wait(4000);
+
+    // Signal user if thread doesn't die
+    VERIFY_OR_DEBUG_ASSERT(!isRunning()) {
+       qWarning() << "ShoutOutput::~ShoutOutput(): Thread didn't die.\
+       Ignored but file a bug report if problems rise!";
+    }
 }
 
 bool ShoutOutput::isConnected() {
@@ -874,7 +880,7 @@ void ShoutOutput::outputAvailable() {
 }
 
 void ShoutOutput::setOutputFifo(FIFO<CSAMPLE>* pOutputFifo) {
-    Q_UNUSED(pOutputFifo);
+    m_pOutputFifo = pOutputFifo;
 }
 
 FIFO<CSAMPLE>* ShoutOutput::getOutputFifo() {
