@@ -5,7 +5,8 @@ NetworkStreamWorker::NetworkStreamWorker()
       m_functionCode(0),
       m_runCount(0),
       m_streamStartTimeUs(-1),
-      m_streamFramesWritten(0) {
+      m_streamFramesWritten(0),
+      m_writeOverflowCount(0) {
 }
 
 NetworkStreamWorker::~NetworkStreamWorker() {
@@ -44,6 +45,18 @@ void NetworkStreamWorker::addFramesWritten(qint64 frames) {
 
 qint64 NetworkStreamWorker::getFramesWritten() {
     return m_streamFramesWritten;
+}
+
+void NetworkStreamWorker::resetOverflowCount() {
+    m_writeOverflowCount = 0;
+}
+
+void NetworkStreamWorker::incrementOverflowCount() {
+    m_writeOverflowCount++;
+}
+
+int NetworkStreamWorker::getOverflowCount() {
+    return m_writeOverflowCount;
 }
 
 int NetworkStreamWorker::getState() {

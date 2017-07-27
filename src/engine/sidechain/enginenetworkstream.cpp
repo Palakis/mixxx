@@ -75,13 +75,29 @@ void EngineNetworkStream::startStream(double sampleRate) {
     m_sampleRate = sampleRate;
     m_streamStartTimeUs = getNetworkTimeUs();
     m_streamFramesWritten = 0;
+
+    for(auto worker : m_workers) {
+        if(worker.isNull())
+            continue;
+
+        worker->setStartTime(getNetworkTimeUs());
+        worker->resetFramesWritten();
+    }
 }
 
 void EngineNetworkStream::stopStream() {
     m_streamStartTimeUs = -1;
+
+    for(auto worker : m_workers) {
+        if(worker.isNull())
+            continue;
+
+        worker->setStartTime(-1);
+    }
 }
 
 int EngineNetworkStream::getWriteExpected() {
+    // TODO(Palakis) : use actual "frames written" values from the workers
     return static_cast<int>(getStreamTimeFrames() - m_streamFramesWritten);
 }
 
@@ -90,35 +106,13 @@ int EngineNetworkStream::getReadExpected() {
 }
 
 void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
-    /*
-    if(!m_pWorker->threadWaiting()) {
-        m_streamFramesWrittent += frames;
-        return;
-    }
-    int writeAvailable = m_pOutputFifo->writeAvailable();
-    int writeRequired = frames * m_numOutputChannels;
-    if (writeAvailable < writeRequired) {
-        qDebug() << "EngineNetworkStream::write() buffer full, loosing samples";
-        m_writeOverflowCount++;
-    }
-    int copyCount = math_min(writeAvailable, writeRequired);
-    if (copyCount > 0) {
-        (void)m_pOutputFifo->write(buffer, copyCount);
-        // we advance the frame only by the samples we have actually copied
-        // This means in case of buffer full (where we loose some frames)
-        // we do not get out of sync, and the syncing code tries to catch up the
-        // stream by writing silence, once the buffer is free.
-        m_streamFramesWritten += copyCount / m_numOutputChannels;
-    }
-    */
-
     for(auto worker : m_workers) {
         if(worker.isNull()) {
             continue;
         }
 
         if(!worker->threadWaiting()) {
-            // TODO(Palakis): do the same as "m_streamFramesWritten += frames"
+            worker->addFramesWritten(frames);
             continue;
         }
 
@@ -128,17 +122,22 @@ void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
             int writeRequired = frames * m_numOutputChannels;
             if(writeAvailable < writeRequired) {
                 qDebug() << "EngineNetworkStream::write() : worker buffer full, loosing samples";
-                // TODO(Palakis): count overflows (same as "m_writeOverflowCount++")
+                worker->incrementOverflowCount();
             }
 
             int copyCount = math_min(writeAvailable, writeRequired);
             if(copyCount > 0) {
                 (void)workerFifo->write(buffer, copyCount);
+                // we advance the frame only by the samples we have actually copied
+                // This means in case of buffer full (where we loose some frames)
+                // we do not get out of sync, and the syncing code tries to catch up the
+                // stream by writing silence, once the buffer is free.
+                worker->addFramesWritten(copyCount / m_numOutputChannels);
             }
         }
     }
 
-    // TODO(Palakis): advance only with frames actually written (see commented section above)
+    // TODO(Palakis): remove this after refactoring writeExpected
     m_streamFramesWritten += frames;
 }
 
@@ -149,7 +148,7 @@ void EngineNetworkStream::writeSilence(int frames) {
         }
 
         if(!worker->threadWaiting()) {
-            // TODO(Palakis): do the same as "m_streamFramesWritten += frames"
+            worker->addFramesWritten(frames);
             continue;
         }
 
@@ -160,7 +159,7 @@ void EngineNetworkStream::writeSilence(int frames) {
             if(writeAvailable < writeRequired) {
                 qDebug() <<
                         "EngineNetworkStream::writeSilence() : worker buffer full, loosing samples";
-                // TODO(Palakis): count overflows (same as "m_writeOverflowCount++")
+                worker->incrementOverflowCount();
             }
 
             int clearCount = math_min(writeAvailable, writeRequired);
@@ -177,10 +176,14 @@ void EngineNetworkStream::writeSilence(int frames) {
                     SampleUtil::clear(dataPtr2, size2);
                 }
                 workerFifo->releaseWriteRegions(clearCount);
+
+                // we advance the frame only by the samples we have actually cleared
+                worker->addFramesWritten(clearCount / m_numOutputChannels);
             }
         }
     }
 
+    // TODO(Palakis): remove this after refactoring writeExpected
     m_streamFramesWritten += frames;
 }
 

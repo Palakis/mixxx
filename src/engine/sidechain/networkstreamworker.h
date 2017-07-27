@@ -62,6 +62,10 @@ class NetworkStreamWorker {
     void addFramesWritten(qint64 frames);
     qint64 getFramesWritten();
 
+    void resetOverflowCount();
+    void incrementOverflowCount();
+    int getOverflowCount();
+
     int getState();
     int getFunctionCode();
     int getRunCount();
@@ -80,6 +84,7 @@ private:
 
     qint64 m_streamStartTimeUs;
     qint64 m_streamFramesWritten;
+    int m_writeOverflowCount;
 };
 
 
