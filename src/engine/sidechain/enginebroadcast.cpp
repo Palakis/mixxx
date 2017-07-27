@@ -131,6 +131,9 @@ void EngineBroadcast::slotEnableCO(double v) {
 
     if (v > 0.0) {
         slotProfilesChanged();
+        m_pStatusCO->forceSet(STATUSCO_CONNECTED);
+    } else {
+        m_pStatusCO->forceSet(STATUSCO_UNCONNECTED);
     }
 }
 
