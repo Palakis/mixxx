@@ -122,7 +122,7 @@ void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
             continue;
         }
 
-        FIFO<CSAMPLE>* workerFifo = worker->getOutputFifo();
+        QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
         if(workerFifo) {
             int writeAvailable = workerFifo->writeAvailable();
             int writeRequired = frames * m_numOutputChannels;
@@ -153,7 +153,7 @@ void EngineNetworkStream::writeSilence(int frames) {
             continue;
         }
 
-        FIFO<CSAMPLE>* workerFifo = worker->getOutputFifo();
+        QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
         if(workerFifo) {
             int writeAvailable = workerFifo->writeAvailable();
             int writeRequired = frames * m_numOutputChannels;
@@ -190,7 +190,7 @@ void EngineNetworkStream::writingDone(int interval) {
             continue;
         }
 
-        FIFO<CSAMPLE>* workerFifo = worker->getOutputFifo();
+        QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
         if(!workerFifo) {
             continue;
         }
@@ -283,7 +283,8 @@ qint64 EngineNetworkStream::getNetworkTimeUs() {
 
 void EngineNetworkStream::addWorker(QSharedPointer<NetworkStreamWorker> pWorker) {
     if (pWorker && m_numOutputChannels) {
-        pWorker->setOutputFifo(new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
+        QSharedPointer<FIFO<CSAMPLE>> workerFifo(new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
+        pWorker->setOutputFifo(workerFifo);
         m_workers.append(pWorker);
     }
 }

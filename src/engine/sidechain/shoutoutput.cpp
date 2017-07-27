@@ -879,11 +879,11 @@ void ShoutOutput::outputAvailable() {
 	m_readSema.release();
 }
 
-void ShoutOutput::setOutputFifo(FIFO<CSAMPLE>* pOutputFifo) {
+void ShoutOutput::setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo) {
     m_pOutputFifo = pOutputFifo;
 }
 
-FIFO<CSAMPLE>* ShoutOutput::getOutputFifo() {
+QSharedPointer<FIFO<CSAMPLE>> ShoutOutput::getOutputFifo() {
     return m_pOutputFifo;
 }
 

@@ -1,6 +1,8 @@
 #ifndef NETWORKSTREAMWORKER_H
 #define NETWORKSTREAMWORKER_H
 
+#include <QSharedPointer>
+
 #include "util/types.h"
 #include "util/fifo.h"
 
@@ -48,10 +50,17 @@ class NetworkStreamWorker {
     virtual void shutdown() = 0;
 
     virtual void outputAvailable();
-    virtual void setOutputFifo(FIFO<CSAMPLE>* pOutputFifo);
-    virtual FIFO<CSAMPLE>* getOutputFifo();
+    virtual void setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo);
+    virtual QSharedPointer<FIFO<CSAMPLE>> getOutputFifo();
 
     virtual bool threadWaiting();
+
+    void setStartTime(qint64 startTime);
+    qint64 getStartTime();
+
+    void resetFramesWritten();
+    void addFramesWritten(qint64 frames);
+    qint64 getFramesWritten();
 
     int getState();
     int getFunctionCode();
@@ -65,9 +74,12 @@ protected:
     void incRunCount();
     
 private:
-    int s_networkStreamWorkerState;
-    int s_functionCode;
-    int s_runCount;
+    int m_networkStreamWorkerState;
+    int m_functionCode;
+    int m_runCount;
+
+    qint64 m_streamStartTimeUs;
+    qint64 m_streamFramesWritten;
 };
 
 

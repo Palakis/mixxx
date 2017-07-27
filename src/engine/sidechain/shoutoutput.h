@@ -70,8 +70,8 @@ class ShoutOutput
     void applySettings();
 
     virtual void outputAvailable();
-    virtual void setOutputFifo(FIFO<CSAMPLE>* pOutputFifo);
-    FIFO<CSAMPLE>* getOutputFifo();
+    virtual void setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo);
+    QSharedPointer<FIFO<CSAMPLE>> getOutputFifo();
     virtual bool threadWaiting();
     virtual void run();
 

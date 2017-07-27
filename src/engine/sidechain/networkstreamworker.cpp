@@ -1,10 +1,11 @@
 #include "networkstreamworker.h"
 
-int NetworkStreamWorker::s_networkStreamWorkerState = NETWORKSTREAMWORKER_STATE_NEW;
-int NetworkStreamWorker::s_functionCode = 0;
-int NetworkStreamWorker::s_runCount = 0;
-
-NetworkStreamWorker::NetworkStreamWorker() {
+NetworkStreamWorker::NetworkStreamWorker()
+    : m_networkStreamWorkerState(NETWORKSTREAMWORKER_STATE_NEW),
+      m_functionCode(0),
+      m_runCount(0),
+      m_streamStartTimeUs(-1),
+      m_streamFramesWritten(0) {
 }
 
 NetworkStreamWorker::~NetworkStreamWorker() {
@@ -13,41 +14,65 @@ NetworkStreamWorker::~NetworkStreamWorker() {
 void NetworkStreamWorker::outputAvailable() {
 }
 
-void NetworkStreamWorker::setOutputFifo(FIFO<CSAMPLE>* pOutputFifo) {
+void NetworkStreamWorker::setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo) {
     Q_UNUSED(pOutputFifo);
+}
+
+QSharedPointer<FIFO<CSAMPLE>> NetworkStreamWorker::getOutputFifo() {
+    return QSharedPointer<FIFO<CSAMPLE>>();
 }
 
 bool NetworkStreamWorker::threadWaiting() {
     return false;
 }
 
+void NetworkStreamWorker::setStartTime(qint64 startTime) {
+    m_streamStartTimeUs = startTime;
+}
+
+qint64 NetworkStreamWorker::getStartTime() {
+    return m_streamStartTimeUs;
+}
+
+void NetworkStreamWorker::resetFramesWritten() {
+    m_streamFramesWritten = 0;
+}
+
+void NetworkStreamWorker::addFramesWritten(qint64 frames) {
+    m_streamFramesWritten += frames;
+}
+
+qint64 NetworkStreamWorker::getFramesWritten() {
+    return m_streamFramesWritten;
+}
+
 int NetworkStreamWorker::getState() {
-    return s_networkStreamWorkerState;
+    return m_networkStreamWorkerState;
 }
 
 int NetworkStreamWorker::getFunctionCode() {
-    return s_functionCode;
+    return m_functionCode;
 }
 
 int NetworkStreamWorker::getRunCount() {
-    return s_runCount;
+    return m_runCount;
 }
 
 void NetworkStreamWorker::debugState() {
     qDebug() << "NetworkStreamWorker state:"
-             << s_networkStreamWorkerState
-             << s_functionCode
-             << s_runCount;
+             << m_networkStreamWorkerState
+             << m_functionCode
+             << m_runCount;
 }
 
 void NetworkStreamWorker::setState(int state) {
-    s_networkStreamWorkerState = state;
+    m_networkStreamWorkerState = state;
 }
 
 void NetworkStreamWorker::setFunctionCode(int code) {
-    s_functionCode = code;
+    m_functionCode = code;
 }
 
 void NetworkStreamWorker::incRunCount() {
-    s_runCount++;
+    m_runCount++;
 }
