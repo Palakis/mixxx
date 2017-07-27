@@ -10,6 +10,7 @@
 #include "control/controlproxy.h"
 #include "preferences/usersettings.h"
 #include "preferences/broadcastsettings.h"
+#include "engine/sidechain/enginenetworkstream.h"
 #include "engine/sidechain/shoutoutput.h"
 
 class ControlPushButton;
