@@ -77,8 +77,9 @@ void EngineNetworkStream::startStream(double sampleRate) {
     m_streamFramesWritten = 0;
 
     for(auto worker : m_workers) {
-        if(worker.isNull())
+        if (worker.isNull()) {
             continue;
+        }
 
         worker->setStartTime(getNetworkTimeUs());
         worker->resetFramesWritten();
@@ -89,8 +90,9 @@ void EngineNetworkStream::stopStream() {
     m_streamStartTimeUs = -1;
 
     for(auto worker : m_workers) {
-        if(worker.isNull())
+        if (worker.isNull()) {
             continue;
+        }
 
         worker->setStartTime(-1);
     }
@@ -107,26 +109,26 @@ int EngineNetworkStream::getReadExpected() {
 
 void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
     for(auto worker : m_workers) {
-        if(worker.isNull()) {
+        if (worker.isNull()) {
             continue;
         }
 
-        if(!worker->threadWaiting()) {
+        if (!worker->threadWaiting()) {
             worker->addFramesWritten(frames);
             continue;
         }
 
         QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
-        if(workerFifo) {
+        if (workerFifo) {
             int writeAvailable = workerFifo->writeAvailable();
             int writeRequired = frames * m_numOutputChannels;
-            if(writeAvailable < writeRequired) {
+            if (writeAvailable < writeRequired) {
                 qDebug() << "EngineNetworkStream::write() : worker buffer full, loosing samples";
                 worker->incrementOverflowCount();
             }
 
             int copyCount = math_min(writeAvailable, writeRequired);
-            if(copyCount > 0) {
+            if (copyCount > 0) {
                 (void)workerFifo->write(buffer, copyCount);
                 // we advance the frame only by the samples we have actually copied
                 // This means in case of buffer full (where we loose some frames)
@@ -143,11 +145,11 @@ void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
 
 void EngineNetworkStream::writeSilence(int frames) {
     for(auto worker : m_workers) {
-        if(worker.isNull()) {
+        if (worker.isNull()) {
             continue;
         }
 
-        if(!worker->threadWaiting()) {
+        if (!worker->threadWaiting()) {
             worker->addFramesWritten(frames);
             continue;
         }
@@ -156,14 +158,14 @@ void EngineNetworkStream::writeSilence(int frames) {
         if(workerFifo) {
             int writeAvailable = workerFifo->writeAvailable();
             int writeRequired = frames * m_numOutputChannels;
-            if(writeAvailable < writeRequired) {
+            if (writeAvailable < writeRequired) {
                 qDebug() <<
                         "EngineNetworkStream::writeSilence() : worker buffer full, loosing samples";
                 worker->incrementOverflowCount();
             }
 
             int clearCount = math_min(writeAvailable, writeRequired);
-            if(clearCount > 0) {
+            if (clearCount > 0) {
                 CSAMPLE* dataPtr1;
                 ring_buffer_size_t size1;
                 CSAMPLE* dataPtr2;
@@ -172,7 +174,7 @@ void EngineNetworkStream::writeSilence(int frames) {
                 (void)workerFifo->aquireWriteRegions(clearCount,
                         &dataPtr1, &size1, &dataPtr2, &size2);
                 SampleUtil::clear(dataPtr1, size1);
-                if(size2 > 0) {
+                if (size2 > 0) {
                     SampleUtil::clear(dataPtr2, size2);
                 }
                 workerFifo->releaseWriteRegions(clearCount);
@@ -189,12 +191,12 @@ void EngineNetworkStream::writeSilence(int frames) {
 
 void EngineNetworkStream::writingDone(int interval) {
     for(auto worker : m_workers) {
-        if(worker.isNull()) {
+        if (worker.isNull()) {
             continue;
         }
 
         QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
-        if(!workerFifo) {
+        if (!workerFifo) {
             continue;
         }
 
