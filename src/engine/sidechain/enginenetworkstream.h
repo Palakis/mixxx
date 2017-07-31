@@ -1,7 +1,7 @@
 #ifndef ENGINENETWORKSTREAM_H_
 #define ENGINENETWORKSTREAM_H_
 
-#include <QList>
+#include <QVector>
 
 #include "util/types.h"
 #include "util/fifo.h"
@@ -39,6 +39,7 @@ class EngineNetworkStream {
     static qint64 getNetworkTimeUs();
 
     void addWorker(QSharedPointer<NetworkStreamWorker> pWorker);
+    void removeWorker(QSharedPointer<NetworkStreamWorker> pWorker);
 
   private:
 
@@ -51,7 +52,7 @@ class EngineNetworkStream {
     qint64 m_streamFramesWritten;
     qint64 m_streamFramesRead;
 
-    QList<QSharedPointer<NetworkStreamWorker>> m_workers;
+    QVector<QSharedPointer<NetworkStreamWorker>> m_workers;
     int m_writeOverflowCount;
 };
 

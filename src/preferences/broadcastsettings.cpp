@@ -50,7 +50,7 @@ void BroadcastSettings::loadProfiles() {
     // in mixxx.cfg for retro-compatibility during alpha and beta testing.
 
     if(files.size() > 0) {
-        kLogger.info() << "Found " << files.size() << " profile(s)";
+        kLogger.info() << "Found" << files.size() << "profile(s)";
 
         // Load profiles from filesystem
         for(QFileInfo fileInfo : files) {
@@ -77,6 +77,13 @@ bool BroadcastSettings::addProfile(const BroadcastProfilePtr& profile) {
     if(!profile)
         return false;
 
+    if(m_profiles.size() >= BROADCAST_MAX_CONNECTIONS) {
+        qDebug() << "BroadcastSettings::addProfile: connection limit reached."
+                 << "can't add more than" << QString::number(BROADCAST_MAX_CONNECTIONS)
+                 << "connections.";
+        return false;
+    }
+
     int position = m_profiles.size();
     beginInsertRows(QModelIndex(), position, position);
 
@@ -100,9 +107,10 @@ BroadcastProfilePtr BroadcastSettings::createProfile(const QString& profileName)
 
     if(!xmlFile.exists()) {
         BroadcastProfilePtr profile(new BroadcastProfile(profileName));
-        saveProfile(profile);
-        addProfile(profile);
-        return profile;
+        if(addProfile(profile)) {
+            saveProfile(profile);
+            return profile;
+        }
     }
     return BroadcastProfilePtr(nullptr);
 }

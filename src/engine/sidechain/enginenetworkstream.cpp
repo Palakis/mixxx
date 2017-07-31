@@ -14,6 +14,7 @@ typedef VOID (WINAPI *PgGetSystemTimeFn)(LPFILETIME);
 static PgGetSystemTimeFn s_pfpgGetSystemTimeFn = NULL;
 #endif
 
+#include "broadcast/defs_broadcast.h"
 #include "util/sample.h"
 
 const int kNetworkLatencyFrames = 8192; // 185 ms @ 44100 Hz
@@ -40,6 +41,8 @@ EngineNetworkStream::EngineNetworkStream(int numOutputChannels,
       m_streamFramesWritten(0),
       m_streamFramesRead(0),
       m_writeOverflowCount(0) {
+    m_workers.reserve(BROADCAST_MAX_CONNECTIONS);
+
     if (numOutputChannels) {
         m_pOutputFifo = new FIFO<CSAMPLE>(numOutputChannels * kBufferFrames);
     }
@@ -287,9 +290,22 @@ qint64 EngineNetworkStream::getNetworkTimeUs() {
 }
 
 void EngineNetworkStream::addWorker(QSharedPointer<NetworkStreamWorker> pWorker) {
+    if (m_workers.size() >= BROADCAST_MAX_CONNECTIONS) {
+        qDebug() << "EngineNetworkStream::addWorker: can't add worker, limit reached."
+                 << "maximum:" << QString::number(BROADCAST_MAX_CONNECTIONS) << "connections.";
+        return;
+    }
+
     if (pWorker && m_numOutputChannels) {
         QSharedPointer<FIFO<CSAMPLE>> workerFifo(new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
         pWorker->setOutputFifo(workerFifo);
         m_workers.append(pWorker);
+    }
+}
+
+void EngineNetworkStream::removeWorker(QSharedPointer<NetworkStreamWorker> pWorker) {
+    int index = m_workers.indexOf(pWorker);
+    if(index > -1) {
+        m_workers.remove(index);
     }
 }
