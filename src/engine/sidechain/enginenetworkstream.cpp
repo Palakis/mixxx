@@ -304,7 +304,7 @@ void EngineNetworkStream::addWorker(QSharedPointer<NetworkStreamWorker> pWorker)
             m_workers[nextNullItem] = pWorker;
 
             qDebug() << "EngineNetworkStream::addWorker: worker added";
-            debugFreeSlots();
+            debugSlots();
         }
     }
 }
@@ -315,18 +315,18 @@ void EngineNetworkStream::removeWorker(QSharedPointer<NetworkStreamWorker> pWork
         m_workers[index].clear();
         qDebug() << "EngineNetworkStream::removeWorker: worker removed";
     } else {
-        qDebug() << "EngineNetworkStream::removeWorker: worker not found";
+        qDebug() << "EngineNetworkStream::removeWorker: ERROR: worker not found";
     }
-    debugFreeSlots();
+    debugSlots();
 }
 
 int EngineNetworkStream::nextListSlotAvailable() {
     return m_workers.indexOf(NetworkStreamWorkerPtr(nullptr));
 }
 
-void EngineNetworkStream::debugFreeSlots() {
+void EngineNetworkStream::debugSlots() {
     int available = m_workers.count(NetworkStreamWorkerPtr(nullptr));
     int total = m_workers.size();
-    qDebug() << "EngineNetworkStream: worker slots available:"
-             << QString("%1 out of %2").arg(available).arg(total);
+    qDebug() << "EngineNetworkStream: worker slots used:"
+             << QString("%1 out of %2").arg(total - available).arg(total);
 }

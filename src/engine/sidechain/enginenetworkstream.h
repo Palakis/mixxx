@@ -43,7 +43,7 @@ class EngineNetworkStream {
 
   private:
     int nextListSlotAvailable();
-    void debugFreeSlots();
+    void debugSlots();
 
     FIFO<CSAMPLE>* m_pOutputFifo;
     FIFO<CSAMPLE>* m_pInputFifo;
