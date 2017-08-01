@@ -32,8 +32,8 @@ const int kBufferFrames = kNetworkLatencyFrames * 4; // 743 ms @ 44100 Hz
 
 EngineNetworkStream::EngineNetworkStream(int numOutputChannels,
                                          int numInputChannels)
-    : m_pOutputFifo(NULL),
-      m_pInputFifo(NULL),
+    : m_pOutputFifo(nullptr),
+      m_pInputFifo(nullptr),
       m_numOutputChannels(numOutputChannels),
       m_numInputChannels(numInputChannels),
       m_sampleRate(0),
@@ -83,8 +83,7 @@ void EngineNetworkStream::startStream(double sampleRate) {
             continue;
         }
 
-        worker->setStartTime(getNetworkTimeUs());
-        worker->resetFramesWritten();
+        worker->startStream(m_sampleRate, m_numOutputChannels);
     }
 }
 
@@ -96,119 +95,12 @@ void EngineNetworkStream::stopStream() {
             continue;
         }
 
-        worker->setStartTime(-1);
+        worker->stopStream();
     }
-}
-
-int EngineNetworkStream::getWriteExpected() {
-    // TODO(Palakis) : use actual "frames written" values from the workers
-    return static_cast<int>(getStreamTimeFrames() - m_streamFramesWritten);
 }
 
 int EngineNetworkStream::getReadExpected() {
     return static_cast<int>(getStreamTimeFrames() - m_streamFramesRead);
-}
-
-void EngineNetworkStream::write(const CSAMPLE* buffer, int frames) {
-    for(auto worker : m_workers) {
-        if (worker.isNull()) {
-            continue;
-        }
-
-        if (!worker->threadWaiting()) {
-            worker->addFramesWritten(frames);
-            continue;
-        }
-
-        QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
-        if (workerFifo) {
-            int writeAvailable = workerFifo->writeAvailable();
-            int writeRequired = frames * m_numOutputChannels;
-            if (writeAvailable < writeRequired) {
-                qDebug() << "EngineNetworkStream::write() : worker buffer full, loosing samples";
-                worker->incrementOverflowCount();
-            }
-
-            int copyCount = math_min(writeAvailable, writeRequired);
-            if (copyCount > 0) {
-                (void)workerFifo->write(buffer, copyCount);
-                // we advance the frame only by the samples we have actually copied
-                // This means in case of buffer full (where we loose some frames)
-                // we do not get out of sync, and the syncing code tries to catch up the
-                // stream by writing silence, once the buffer is free.
-                worker->addFramesWritten(copyCount / m_numOutputChannels);
-            }
-        }
-    }
-
-    // TODO(Palakis): remove this after refactoring writeExpected
-    m_streamFramesWritten += frames;
-}
-
-void EngineNetworkStream::writeSilence(int frames) {
-    for(auto worker : m_workers) {
-        if (worker.isNull()) {
-            continue;
-        }
-
-        if (!worker->threadWaiting()) {
-            worker->addFramesWritten(frames);
-            continue;
-        }
-
-        QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
-        if(workerFifo) {
-            int writeAvailable = workerFifo->writeAvailable();
-            int writeRequired = frames * m_numOutputChannels;
-            if (writeAvailable < writeRequired) {
-                qDebug() <<
-                        "EngineNetworkStream::writeSilence() : worker buffer full, loosing samples";
-                worker->incrementOverflowCount();
-            }
-
-            int clearCount = math_min(writeAvailable, writeRequired);
-            if (clearCount > 0) {
-                CSAMPLE* dataPtr1;
-                ring_buffer_size_t size1;
-                CSAMPLE* dataPtr2;
-                ring_buffer_size_t size2;
-
-                (void)workerFifo->aquireWriteRegions(clearCount,
-                        &dataPtr1, &size1, &dataPtr2, &size2);
-                SampleUtil::clear(dataPtr1, size1);
-                if (size2 > 0) {
-                    SampleUtil::clear(dataPtr2, size2);
-                }
-                workerFifo->releaseWriteRegions(clearCount);
-
-                // we advance the frame only by the samples we have actually cleared
-                worker->addFramesWritten(clearCount / m_numOutputChannels);
-            }
-        }
-    }
-
-    // TODO(Palakis): remove this after refactoring writeExpected
-    m_streamFramesWritten += frames;
-}
-
-void EngineNetworkStream::writingDone(int interval) {
-    for(auto worker : m_workers) {
-        if (worker.isNull()) {
-            continue;
-        }
-
-        QSharedPointer<FIFO<CSAMPLE>> workerFifo = worker->getOutputFifo();
-        if (!workerFifo) {
-            continue;
-        }
-
-        // Check for desired kNetworkLatencyFrames + 1/2 interval to
-        // avoid big jitter due to interferences with sync code
-        if (workerFifo->readAvailable() + interval / 2
-                >= (m_numOutputChannels * kNetworkLatencyFrames)) {
-            worker->outputAvailable();
-        }
-    }
 }
 
 void EngineNetworkStream::read(CSAMPLE* buffer, int frames) {
@@ -301,6 +193,7 @@ void EngineNetworkStream::addWorker(QSharedPointer<NetworkStreamWorker> pWorker)
             QSharedPointer<FIFO<CSAMPLE>> workerFifo(
                     new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
             pWorker->setOutputFifo(workerFifo);
+            pWorker->startStream(m_sampleRate, m_numOutputChannels);
             m_workers[nextNullItem] = pWorker;
 
             qDebug() << "EngineNetworkStream::addWorker: worker added";

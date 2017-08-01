@@ -33,7 +33,6 @@ class SoundDeviceNetwork : public SoundDevice {
     QSharedPointer<EngineNetworkStream> m_pNetworkStream;
     FIFO<CSAMPLE>* m_outputFifo;
     FIFO<CSAMPLE>* m_inputFifo;
-    bool m_outputDrift;
     bool m_inputDrift;
     static volatile int m_underflowHappened;
 };

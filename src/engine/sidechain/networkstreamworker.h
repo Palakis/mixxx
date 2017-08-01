@@ -53,18 +53,29 @@ class NetworkStreamWorker {
     virtual void setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo);
     virtual QSharedPointer<FIFO<CSAMPLE>> getOutputFifo();
 
+    void startStream(double samplerate, int numOutputChannels);
+    void stopStream();
+
+    void processWrite(int outChunkSize, int readAvailable,
+            CSAMPLE* dataPtr1, ring_buffer_size_t size1,
+            CSAMPLE* dataPtr2, ring_buffer_size_t size2);
+
+    int getWriteExpected();
+    void write(const CSAMPLE* buffer, int frames);
+    void writeSilence(int frames);
+    void writingDone(int interval);
+
     virtual bool threadWaiting();
 
-    void setStartTime(qint64 startTime);
-    qint64 getStartTime();
+    qint64 getStreamTimeUs();
+    qint64 getStreamTimeFrames();
 
-    void resetFramesWritten();
-    void addFramesWritten(qint64 frames);
-    qint64 getFramesWritten();
-
-    void resetOverflowCount();
-    void incrementOverflowCount();
-    int getOverflowCount();
+    void setDrifting(bool isDrifting) {
+        m_outputDrift = isDrifting;
+    }
+    bool isDrifting() {
+        return m_outputDrift;
+    }
 
     int getState();
     int getFunctionCode();
@@ -78,6 +89,9 @@ protected:
     void incRunCount();
     
 private:
+    double m_sampleRate;
+    int m_numOutputChannels;
+
     int m_networkStreamWorkerState;
     int m_functionCode;
     int m_runCount;
@@ -85,6 +99,7 @@ private:
     qint64 m_streamStartTimeUs;
     qint64 m_streamFramesWritten;
     int m_writeOverflowCount;
+    bool m_outputDrift;
 };
 
 typedef QSharedPointer<NetworkStreamWorker> NetworkStreamWorkerPtr;

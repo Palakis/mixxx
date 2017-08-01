@@ -16,14 +16,8 @@ class EngineNetworkStream {
     void startStream(double sampleRate);
     void stopStream();
 
-    int getWriteExpected();
     int getReadExpected();
-
-    void write(const CSAMPLE* buffer, int frames);
     void read(CSAMPLE* buffer, int frames);
-    void writeSilence(int frames);
-
-    void writingDone(int interval);
 
     qint64 getStreamTimeUs();
     qint64 getStreamTimeFrames();
@@ -40,6 +34,10 @@ class EngineNetworkStream {
 
     void addWorker(NetworkStreamWorkerPtr pWorker);
     void removeWorker(NetworkStreamWorkerPtr pWorker);
+
+    QVector<NetworkStreamWorkerPtr> workers() {
+        return m_workers;
+    }
 
   private:
     int nextListSlotAvailable();
