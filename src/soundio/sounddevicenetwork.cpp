@@ -222,6 +222,9 @@ void SoundDeviceNetwork::writeProcess() {
     ring_buffer_size_t size1;
     CSAMPLE* dataPtr2;
     ring_buffer_size_t size2;
+    // Try to read as most frames as possible.
+    // NetworkStreamWorker::processWrite will take care
+    // of buffer handling
     m_outputFifo->aquireReadRegions(readAvailable,
             &dataPtr1, &size1, &dataPtr2, &size2);
 
