@@ -38,8 +38,8 @@ class EngineNetworkStream {
 
     static qint64 getNetworkTimeUs();
 
-    void addWorker(QSharedPointer<NetworkStreamWorker> pWorker);
-    void removeWorker(QSharedPointer<NetworkStreamWorker> pWorker);
+    void addWorker(NetworkStreamWorkerPtr pWorker);
+    void removeWorker(NetworkStreamWorkerPtr pWorker);
 
   private:
     int nextListSlotAvailable();
@@ -62,7 +62,7 @@ class EngineNetworkStream {
     // (which are thread-safe) initialized with null pointers. R/W operations to
     // the workers are then performed on thread-safe QSharedPointers and not
     // onto the thread-unsafe QVector
-    QVector<QSharedPointer<NetworkStreamWorker>> m_workers;
+    QVector<NetworkStreamWorkerPtr> m_workers;
 };
 
 #endif /* ENGINENETWORKSTREAM_H_ */

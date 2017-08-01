@@ -321,11 +321,11 @@ void EngineNetworkStream::removeWorker(QSharedPointer<NetworkStreamWorker> pWork
 }
 
 int EngineNetworkStream::nextListSlotAvailable() {
-    return m_workers.indexOf(QSharedPointer<NetworkStreamWorker>(nullptr));
+    return m_workers.indexOf(NetworkStreamWorkerPtr(nullptr));
 }
 
 void EngineNetworkStream::debugFreeSlots() {
-    int available = m_workers.count(QSharedPointer<NetworkStreamWorker>(nullptr));
+    int available = m_workers.count(NetworkStreamWorkerPtr(nullptr));
     int total = m_workers.size();
     qDebug() << "EngineNetworkStream: worker slots available:"
              << QString("%1 out of %2").arg(available).arg(total);

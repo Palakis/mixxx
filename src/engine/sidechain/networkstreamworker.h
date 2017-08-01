@@ -87,5 +87,6 @@ private:
     int m_writeOverflowCount;
 };
 
+typedef QSharedPointer<NetworkStreamWorker> NetworkStreamWorkerPtr;
 
 #endif /* NETWORKSTREAMWORKER_H */
