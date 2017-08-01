@@ -216,11 +216,13 @@ void SoundDeviceNetwork::writeProcess() {
         m_outputFifo->releaseWriteRegions(writeCount);
     }
 
+    int readAvailable = m_outputFifo->readAvailable();
+
     CSAMPLE* dataPtr1;
     ring_buffer_size_t size1;
     CSAMPLE* dataPtr2;
     ring_buffer_size_t size2;
-    m_outputFifo->aquireReadRegions(copyCount,
+    m_outputFifo->aquireReadRegions(readAvailable,
             &dataPtr1, &size1, &dataPtr2, &size2);
 
     QVector<NetworkStreamWorkerPtr> workers = m_pNetworkStream->workers();
@@ -229,11 +231,10 @@ void SoundDeviceNetwork::writeProcess() {
             continue;
         }
 
-        int readAvailable = m_outputFifo->readAvailable();
         pWorker->processWrite(outChunkSize, readAvailable,
                 dataPtr1, size1,
                 dataPtr2, size2);
     }
 
-    m_outputFifo->releaseReadRegions(copyCount);
+    m_outputFifo->releaseReadRegions(readAvailable);
 }

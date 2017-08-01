@@ -65,10 +65,6 @@ void NetworkStreamWorker::processWrite(int outChunkSize, int readAvailable,
     int writeAvailable = getWriteExpected() * m_numOutputChannels;
     int copyCount = qMin(readAvailable, writeAvailable);
 
-    qDebug() << "SoundDeviceNetwork::writeProcess: writeAvailable: " << writeAvailable;
-    qDebug() << "SoundDeviceNetwork::writeProcess: readAvailable: " << readAvailable;
-    qDebug() << "SoundDeviceNetwork::writeProcess: copyCount: " << copyCount;
-
     //qDebug() << "SoundDevicePortAudio::writeProcess()" << toRead << writeAvailable;
     if (copyCount > 0) {
 
