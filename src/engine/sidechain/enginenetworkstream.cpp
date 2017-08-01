@@ -40,9 +40,8 @@ EngineNetworkStream::EngineNetworkStream(int numOutputChannels,
       m_streamStartTimeUs(-1),
       m_streamFramesWritten(0),
       m_streamFramesRead(0),
-      m_writeOverflowCount(0) {
-    m_workers.reserve(BROADCAST_MAX_CONNECTIONS);
-
+      m_writeOverflowCount(0),
+      m_workers(BROADCAST_MAX_CONNECTIONS) {
     if (numOutputChannels) {
         m_pOutputFifo = new FIFO<CSAMPLE>(numOutputChannels * kBufferFrames);
     }
@@ -290,22 +289,44 @@ qint64 EngineNetworkStream::getNetworkTimeUs() {
 }
 
 void EngineNetworkStream::addWorker(QSharedPointer<NetworkStreamWorker> pWorker) {
-    if (m_workers.size() >= BROADCAST_MAX_CONNECTIONS) {
-        qDebug() << "EngineNetworkStream::addWorker: can't add worker, limit reached."
-                 << "maximum:" << QString::number(BROADCAST_MAX_CONNECTIONS) << "connections.";
+    if (nextListSlotAvailable() < 0) {
+        qDebug() << "EngineNetworkStream::addWorker: can't add worker:"
+                 << "no free slot left in internal list";
         return;
     }
 
     if (pWorker && m_numOutputChannels) {
-        QSharedPointer<FIFO<CSAMPLE>> workerFifo(new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
-        pWorker->setOutputFifo(workerFifo);
-        m_workers.append(pWorker);
+        int nextNullItem = nextListSlotAvailable();
+        if(nextNullItem > -1) {
+            QSharedPointer<FIFO<CSAMPLE>> workerFifo(
+                    new FIFO<CSAMPLE>(m_numOutputChannels * kBufferFrames));
+            pWorker->setOutputFifo(workerFifo);
+            m_workers[nextNullItem] = pWorker;
+
+            qDebug() << "EngineNetworkStream::addWorker: worker added";
+            debugFreeSlots();
+        }
     }
 }
 
 void EngineNetworkStream::removeWorker(QSharedPointer<NetworkStreamWorker> pWorker) {
     int index = m_workers.indexOf(pWorker);
     if(index > -1) {
-        m_workers.remove(index);
+        m_workers[index].clear();
+        qDebug() << "EngineNetworkStream::removeWorker: worker removed";
+    } else {
+        qDebug() << "EngineNetworkStream::removeWorker: worker not found";
     }
+    debugFreeSlots();
+}
+
+int EngineNetworkStream::nextListSlotAvailable() {
+    return m_workers.indexOf(QSharedPointer<NetworkStreamWorker>(nullptr));
+}
+
+void EngineNetworkStream::debugFreeSlots() {
+    int available = m_workers.count(QSharedPointer<NetworkStreamWorker>(nullptr));
+    int total = m_workers.size();
+    qDebug() << "EngineNetworkStream: worker slots available:"
+             << QString("%1 out of %2").arg(available).arg(total);
 }

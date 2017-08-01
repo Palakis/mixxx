@@ -42,6 +42,8 @@ class EngineNetworkStream {
     void removeWorker(QSharedPointer<NetworkStreamWorker> pWorker);
 
   private:
+    int nextListSlotAvailable();
+    void debugFreeSlots();
 
     FIFO<CSAMPLE>* m_pOutputFifo;
     FIFO<CSAMPLE>* m_pInputFifo;
@@ -51,9 +53,16 @@ class EngineNetworkStream {
     qint64 m_streamStartTimeUs;
     qint64 m_streamFramesWritten;
     qint64 m_streamFramesRead;
-
-    QVector<QSharedPointer<NetworkStreamWorker>> m_workers;
     int m_writeOverflowCount;
+
+    // EngineNetworkStream can't use locking mechanisms to protect its
+    // internal worker list against concurrency issues, as it is used by
+    // methods called from the audio engine thread.
+    // Instead, the internal list has a fixed number of QSharedPointers
+    // (which are thread-safe) initialized with null pointers. R/W operations to
+    // the workers are then performed on thread-safe QSharedPointers and not
+    // onto the thread-unsafe QVector
+    QVector<QSharedPointer<NetworkStreamWorker>> m_workers;
 };
 
 #endif /* ENGINENETWORKSTREAM_H_ */
