@@ -221,7 +221,7 @@ void DlgPrefBroadcast::enableCustomMetadataChanged(int value) {
 
 void DlgPrefBroadcast::btnCreateConnectionClicked(bool enabled) {
     if(m_pBroadcastSettings->rowCount() >= BROADCAST_MAX_CONNECTIONS) {
-        QMessageBox::warning(this, tr("Action forbidden."),
+        QMessageBox::warning(this, tr("Action failed."),
                 tr("You can't create more than %1 Live Broadcasting connections.")
                 .arg(BROADCAST_MAX_CONNECTIONS));
         return;
