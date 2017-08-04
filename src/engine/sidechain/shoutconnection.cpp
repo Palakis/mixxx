@@ -1,4 +1,4 @@
-// shoutoutput.h
+// shoutconnection.h
 // Created July 4th 2017 by Stéphane Lepin <stephane.lepin@gmail.com>
 
 #include <QtDebug>
@@ -25,7 +25,7 @@
 #include "recording/defs_recording.h"
 #include "track/track.h"
 
-#include "engine/sidechain/shoutoutput.h"
+#include <engine/sidechain/shoutconnection.h>
 
 namespace {
 static const int kConnectRetries = 30;
@@ -35,7 +35,7 @@ static const int kMaxNetworkCache = 491520;  // 10 s mp3 @ 192 kbit/s
 static const int kMaxShoutFailures = 3;
 }
 
-ShoutOutput::ShoutOutput(BroadcastProfilePtr profile,
+ShoutConnection::ShoutConnection(BroadcastProfilePtr profile,
         UserSettingsPointer pConfig)
         : m_pTextCodec(nullptr),
           m_pMetaData(),
@@ -89,7 +89,7 @@ ShoutOutput::ShoutOutput(BroadcastProfilePtr profile,
     }
 }
 
-ShoutOutput::~ShoutOutput() {
+ShoutConnection::~ShoutConnection() {
     delete m_pStatusCO;
     delete m_pMasterSamplerate;
 
@@ -112,7 +112,7 @@ ShoutOutput::~ShoutOutput() {
     }
 }
 
-bool ShoutOutput::isConnected() {
+bool ShoutConnection::isConnected() {
     if (m_pShout) {
         m_iShoutStatus = shout_get_connected(m_pShout);
         if (m_iShoutStatus == SHOUTERR_CONNECTED)
@@ -122,7 +122,7 @@ bool ShoutOutput::isConnected() {
 }
 
 // Only called when applying settings while broadcasting is active
-void ShoutOutput::applySettings() {
+void ShoutConnection::applySettings() {
     // Do nothing if profile is disabled
     if(!m_pProfile->getEnabled())
         return;
@@ -137,14 +137,14 @@ void ShoutOutput::applySettings() {
     }
 }
 
-QByteArray ShoutOutput::encodeString(const QString& string) {
+QByteArray ShoutConnection::encodeString(const QString& string) {
     if (m_pTextCodec) {
         return m_pTextCodec->fromUnicode(string);
     }
     return string.toLatin1();
 }
 
-void ShoutOutput::updateFromPreferences() {
+void ShoutConnection::updateFromPreferences() {
     qDebug() << m_pProfile->getProfileName() << ": updating from preferences";
 
     double dStatus = m_pStatusCO->get();
@@ -407,7 +407,7 @@ void ShoutOutput::updateFromPreferences() {
     setState(NETWORKSTREAMWORKER_STATE_READY);
 }
 
-bool ShoutOutput::serverConnect() {
+bool ShoutConnection::serverConnect() {
     if(!m_pProfile->getEnabled())
         return false;
 
@@ -416,7 +416,7 @@ bool ShoutOutput::serverConnect() {
     return true;
 }
 
-bool ShoutOutput::processConnect() {
+bool ShoutConnection::processConnect() {
     qDebug() << "ShoutOutput::processConnect()";
 
     // Make sure that we call updateFromPreferences always
@@ -549,7 +549,7 @@ bool ShoutOutput::processConnect() {
     return false;
 }
 
-bool ShoutOutput::processDisconnect() {
+bool ShoutConnection::processDisconnect() {
     qDebug() << "ShoutOutput::processDisconnect()";
     bool disconnected = false;
     if (isConnected()) {
@@ -568,7 +568,7 @@ bool ShoutOutput::processDisconnect() {
     return disconnected;
 }
 
-void ShoutOutput::write(const unsigned char* header, const unsigned char* body,
+void ShoutConnection::write(const unsigned char* header, const unsigned char* body,
                             int headerLen, int bodyLen) {
     setFunctionCode(7);
 	if (!m_pShout || m_iShoutStatus != SHOUTERR_CONNECTED) {
@@ -598,23 +598,23 @@ void ShoutOutput::write(const unsigned char* header, const unsigned char* body,
     }
 }
 // These are not used for streaming, but the interface requires them
-int ShoutOutput::tell() {
+int ShoutConnection::tell() {
     if (!m_pShout) {
         return -1;
     }
     return -1;
 }
 // These are not used for streaming, but the interface requires them
-void ShoutOutput::seek(int pos) {
+void ShoutConnection::seek(int pos) {
     Q_UNUSED(pos)
     return;
 }
 // These are not used for streaming, but the interface requires them
-int ShoutOutput::filelen() {
+int ShoutConnection::filelen() {
     return 0;
 }
 
-bool ShoutOutput::writeSingle(const unsigned char* data, size_t len) {
+bool ShoutConnection::writeSingle(const unsigned char* data, size_t len) {
     setFunctionCode(8);
     int ret = shout_send_raw(m_pShout, data, len);
     if (ret == SHOUTERR_BUSY) {
@@ -638,7 +638,7 @@ bool ShoutOutput::writeSingle(const unsigned char* data, size_t len) {
     return true;
 }
 
-void ShoutOutput::process(const CSAMPLE* pBuffer, const int iBufferSize) {
+void ShoutConnection::process(const CSAMPLE* pBuffer, const int iBufferSize) {
     setFunctionCode(4);
     if(!m_pProfile->getEnabled())
         return;
@@ -663,7 +663,7 @@ void ShoutOutput::process(const CSAMPLE* pBuffer, const int iBufferSize) {
     setState(NETWORKSTREAMWORKER_STATE_READY);
 }
 
-bool ShoutOutput::metaDataHasChanged() {
+bool ShoutConnection::metaDataHasChanged() {
     TrackPointer pTrack;
 
     // TODO(rryan): This is latency and buffer size dependent. Should be based
@@ -693,7 +693,7 @@ bool ShoutOutput::metaDataHasChanged() {
     return true;
 }
 
-void ShoutOutput::updateMetaData() {
+void ShoutConnection::updateMetaData() {
     setFunctionCode(5);
     if (!m_pShout || !m_pShoutMetaData)
         return;
@@ -795,7 +795,7 @@ void ShoutOutput::updateMetaData() {
     }
 }
 
-void ShoutOutput::errorDialog(QString text, QString detailedError) {
+void ShoutConnection::errorDialog(QString text, QString detailedError) {
     qWarning() << "Streaming error: " << detailedError;
     ErrorDialogProperties* props = ErrorDialogHandler::instance()->newDialogProperties();
     props->setType(DLG_WARNING);
@@ -809,7 +809,7 @@ void ShoutOutput::errorDialog(QString text, QString detailedError) {
     setState(NETWORKSTREAMWORKER_STATE_ERROR);
 }
 
-void ShoutOutput::infoDialog(QString text, QString detailedInfo) {
+void ShoutConnection::infoDialog(QString text, QString detailedInfo) {
     ErrorDialogProperties* props = ErrorDialogHandler::instance()->newDialogProperties();
     props->setType(DLG_INFO);
     props->setTitle(tr("Live broadcasting : %1").arg(m_pProfile->getProfileName()));
@@ -821,7 +821,7 @@ void ShoutOutput::infoDialog(QString text, QString detailedInfo) {
     ErrorDialogHandler::instance()->requestErrorDialog(props);
 }
 
-bool ShoutOutput::waitForRetry() {
+bool ShoutConnection::waitForRetry() {
     if (m_limitReconnects &&
             m_retryCount >= m_maximumRetries) {
         return false;
@@ -848,7 +848,7 @@ bool ShoutOutput::waitForRetry() {
     return true;
 }
 
-void ShoutOutput::tryReconnect() {
+void ShoutConnection::tryReconnect() {
     QString originalErrorStr = m_lastErrorStr;
     m_pStatusCO->forceSet(STATUSCO_FAILURE);
 
@@ -875,23 +875,23 @@ void ShoutOutput::tryReconnect() {
     }
 }
 
-void ShoutOutput::outputAvailable() {
+void ShoutConnection::outputAvailable() {
 	m_readSema.release();
 }
 
-void ShoutOutput::setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo) {
+void ShoutConnection::setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo) {
     m_pOutputFifo = pOutputFifo;
 }
 
-QSharedPointer<FIFO<CSAMPLE>> ShoutOutput::getOutputFifo() {
+QSharedPointer<FIFO<CSAMPLE>> ShoutConnection::getOutputFifo() {
     return m_pOutputFifo;
 }
 
-bool ShoutOutput::threadWaiting() {
+bool ShoutConnection::threadWaiting() {
     return m_threadWaiting;
 }
 
-void ShoutOutput::run() {
+void ShoutConnection::run() {
     QThread::currentThread()->setObjectName(
             QString("ShoutOutput '%1'").arg(m_pProfile->getProfileName()));
     qDebug() << "ShoutOutput::run: Starting thread";
@@ -959,7 +959,7 @@ void ShoutOutput::run() {
 }
 
 #ifndef __WINDOWS__
-void ShoutOutput::ignoreSigpipe() {
+void ShoutConnection::ignoreSigpipe() {
     // If the remote connection is closed, shout_send_raw() can cause a
     // SIGPIPE. If it is unhandled then Mixxx will quit immediately.
 #ifdef Q_OS_MAC

@@ -11,7 +11,7 @@
 #include "preferences/usersettings.h"
 #include "preferences/broadcastsettings.h"
 #include "engine/sidechain/enginenetworkstream.h"
-#include "engine/sidechain/shoutoutput.h"
+#include "engine/sidechain/shoutconnection.h"
 
 class ControlPushButton;
 
@@ -27,7 +27,7 @@ class EngineBroadcast : public QObject {
 
     EngineBroadcast(UserSettingsPointer pConfig,
                     BroadcastSettingsPointer pBroadcastSettings,
-                    QSharedPointer<EngineNetworkStream> pNetworkStream);
+                    const std::unique_ptr<EngineNetworkStream>& pNetworkStream);
     virtual ~EngineBroadcast();
 
     bool addConnection(BroadcastProfilePtr profile);
@@ -41,12 +41,12 @@ class EngineBroadcast : public QObject {
     void slotProfilesChanged();
 
   private:
-    QMap<QString,ShoutOutputPtr> m_connections;
+    QMap<QString,ShoutConnectionPtr> m_connections;
     QMutex m_connectionsMutex;
 
     BroadcastSettingsPointer m_settings;
     UserSettingsPointer m_pConfig;
-    QSharedPointer<EngineNetworkStream> m_pNetworkStream;
+    const std::unique_ptr<EngineNetworkStream>& m_pNetworkStream;
 
     ControlPushButton* m_pBroadcastEnabled;
     ControlObject* m_pStatusCO;

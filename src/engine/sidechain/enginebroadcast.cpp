@@ -20,7 +20,7 @@
 
 EngineBroadcast::EngineBroadcast(UserSettingsPointer pConfig,
                                  BroadcastSettingsPointer pBroadcastSettings,
-                                 QSharedPointer<EngineNetworkStream> pNetworkStream)
+                                 const std::unique_ptr<EngineNetworkStream>& pNetworkStream)
         : m_settings(pBroadcastSettings),
           m_pConfig(pConfig),
           m_pNetworkStream(pNetworkStream) {
@@ -75,7 +75,7 @@ bool EngineBroadcast::addConnection(BroadcastProfilePtr profile) {
     if(m_connections.contains(profileName))
         return false;
 
-    ShoutOutputPtr output(new ShoutOutput(profile, m_pConfig));
+    ShoutConnectionPtr output(new ShoutConnection(profile, m_pConfig));
 
     m_connectionsMutex.lock();
     m_connections.insert(profileName, output);
@@ -91,7 +91,7 @@ bool EngineBroadcast::removeConnection(BroadcastProfilePtr profile) {
         return false;
 
     m_connectionsMutex.lock();
-    ShoutOutputPtr output = m_connections.take(profile->getProfileName());
+    ShoutConnectionPtr output = m_connections.take(profile->getProfileName());
     m_connectionsMutex.unlock();
 
     if(output) {
@@ -132,7 +132,7 @@ void EngineBroadcast::slotProfileRemoved(BroadcastProfilePtr profile) {
 }
 
 void EngineBroadcast::slotProfileRenamed(QString oldName, BroadcastProfilePtr profile) {
-    ShoutOutputPtr oldItem = m_connections.take(oldName);
+    ShoutConnectionPtr oldItem = m_connections.take(oldName);
     if(oldItem) {
         // Profile in ShoutOutput is a reference, which is supposed
         // to have already been updated
@@ -143,7 +143,7 @@ void EngineBroadcast::slotProfileRenamed(QString oldName, BroadcastProfilePtr pr
 
 void EngineBroadcast::slotProfilesChanged() {
     if(m_pBroadcastEnabled->toBool()) {
-        for(ShoutOutputPtr c : m_connections.values()) {
+        for(ShoutConnectionPtr c : m_connections.values()) {
             if(c) c->applySettings();
         }
     }
