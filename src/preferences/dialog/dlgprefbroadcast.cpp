@@ -16,7 +16,8 @@ namespace {
 const char* kSettingsGroupHeader = "Settings for profile '%1'";
 const int kColumnEnabled = 0;
 const int kColumnName = 1;
-const int kColumnRemove = 2;
+const int kColumnStatus = 2;
+const int kColumnRemove = 3;
 }
 
 DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
@@ -26,6 +27,14 @@ DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
           m_pBroadcastSettings(pBroadcastSettings),
           m_pProfileListSelection(nullptr) {
     setupUi(this);
+
+#ifndef __QTKEYCHAIN__
+    // If secure storage is disabled, hide the checkbox
+    // and force the value to false.
+    cbSecureCredentials->setVisible(false);
+    cbSecureCredentials->setChecked(false);
+#endif
+
     connect(profileList->horizontalHeader(), SIGNAL(sectionResized(int, int, int)),
             this, SLOT(onSectionResized()));
     connect(cbRemoveMode, SIGNAL(stateChanged(int)),
@@ -117,6 +126,7 @@ void DlgPrefBroadcast::slotResetToDefaults() {
 
     // Make sure to keep these values in sync with the constructor.
     enableLiveBroadcasting->setChecked(false);
+    cbSecureCredentials->setChecked(false);
     comboBoxServerType->setCurrentIndex(0);
     mountpoint->setText(dProfile.getMountpoint());
     host->setText(dProfile.getHost());
@@ -267,6 +277,8 @@ void DlgPrefBroadcast::getValuesFromProfile(BroadcastProfilePtr profile) {
             .arg(profile->getProfileName());
     groupBoxProfileSettings->setTitle(headerText);
 
+    cbSecureCredentials->setChecked(profile->secureCredentialStorage());
+
     // Server type combo list
     int tmp_index = comboBoxServerType->findData(profile->getServertype());
     if (tmp_index < 0) { // Set default if invalid.
@@ -375,6 +387,8 @@ void DlgPrefBroadcast::setValuesToProfile(BroadcastProfilePtr profile) {
     if(!profile)
         return;
 
+    profile->setSecureCredentialStorage(cbSecureCredentials->isChecked());
+
     // Combo boxes, make sure to load their data not their display strings.
     profile->setServertype(comboBoxServerType->itemData(
             comboBoxServerType->currentIndex()).toString());
@@ -445,8 +459,9 @@ void DlgPrefBroadcast::onSectionResized() {
 
     sender()->blockSignals(true);
     profileList->setColumnWidth(kColumnEnabled, 100);
-    profileList->setColumnWidth(kColumnName, width * 0.65); // 70% of profileList's width
-    // The last column, kColumnRemove, is automatically resized to fill
+    profileList->setColumnWidth(kColumnName, width * 0.45);
+    profileList->setColumnWidth(kColumnStatus, width * 0.20);
+    // The last column is automatically resized to fill
     // the remaining width, thanks to stretchLastSection set to true.
     sender()->blockSignals(false);
 }

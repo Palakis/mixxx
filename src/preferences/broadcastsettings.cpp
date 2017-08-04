@@ -16,7 +16,8 @@ const char* kDefaultProfile = "Profile 1"; // Must be used only when initializin
 const mixxx::Logger kLogger("BroadcastSettings");
 const int kColumnEnabled = 0;
 const int kColumnName = 1;
-const int kColumnRemove = 2;
+const int kColumnStatus = 2;
+const int kColumnRemove = 3;
 } // anonymous namespace
 
 BroadcastSettings::BroadcastSettings(
@@ -94,6 +95,8 @@ bool BroadcastSettings::addProfile(const BroadcastProfilePtr& profile) {
     // it won't delete the pointer.
     connect(profile.data(), SIGNAL(profileNameChanged(QString, QString)),
             this, SLOT(onProfileNameChanged(QString,QString)));
+    connect(profile.data(), SIGNAL(connectionStatusChanged(int)),
+            this, SLOT(onConnectionStatusChanged(int)));
     m_profiles.insert(profile->getProfileName(), BroadcastProfilePtr(profile));
 
     endInsertRows();
@@ -199,12 +202,22 @@ void BroadcastSettings::onProfileNameChanged(QString oldName, QString newName) {
     }
 }
 
+void BroadcastSettings::onConnectionStatusChanged(int newStatus) {
+    Q_UNUSED(newStatus);
+    // Refresh the whole status column
+    QModelIndex start = this->index(0, kColumnStatus);
+    QModelIndex end = this->index(m_profiles.size()-1, kColumnStatus);
+    emit dataChanged(start, end);
+}
+
 int BroadcastSettings::rowCount(const QModelIndex& parent) const {
+    Q_UNUSED(parent);
     return m_profiles.size();
 }
 
 int BroadcastSettings::columnCount(const QModelIndex& parent) const {
-    return 3;
+    Q_UNUSED(parent);
+    return 4;
 }
 
 QVariant BroadcastSettings::data(const QModelIndex& index, int role) const {
@@ -220,6 +233,8 @@ QVariant BroadcastSettings::data(const QModelIndex& index, int role) const {
         } else if(column == kColumnName
         		&& (role == Qt::DisplayRole || role == Qt::EditRole)) {
             return profile->getProfileName();
+        } else if(column == kColumnStatus && role == Qt::DisplayRole) {
+            return connectionStatusString(profile);
         } else if(column == kColumnRemove && role == Qt::DisplayRole) {
             return tr("Double-click to remove");
         }
@@ -236,6 +251,8 @@ QVariant BroadcastSettings::headerData(int section, Qt::Orientation orientation,
                 return tr("Enabled");
             } else if(section == kColumnName) {
                 return tr("Name");
+            } else if(section == kColumnStatus) {
+                return tr("Status");
             } else if(section == kColumnRemove) {
                 return QString("");
             }
@@ -289,4 +306,21 @@ BroadcastProfilePtr BroadcastSettings::profileAt(int index) {
 
 QList<BroadcastProfilePtr> BroadcastSettings::profiles() {
     return m_profiles.values();
+}
+
+QString BroadcastSettings::connectionStatusString(BroadcastProfilePtr profile) {
+    int status = profile->connectionStatus();
+    switch(status) {
+        case BroadcastProfile::STATUS_UNCONNECTED:
+            return tr("Disconnected");
+        case BroadcastProfile::STATUS_CONNECTING:
+            return tr("Connecting...");
+        case BroadcastProfile::STATUS_CONNECTED:
+            return tr("Connected");
+        case BroadcastProfile::STATUS_FAILURE:
+            return tr("Failed");
+
+        default:
+            return tr("Unknown");
+    }
 }
