@@ -1,4 +1,4 @@
-// shoutconnection.h
+// shoutconnection.cpp
 // Created July 4th 2017 by Stéphane Lepin <stephane.lepin@gmail.com>
 
 #include <QtDebug>
