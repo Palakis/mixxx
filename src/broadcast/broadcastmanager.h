@@ -5,6 +5,8 @@
 
 #include "preferences/settingsmanager.h"
 #include "preferences/usersettings.h"
+#include "engine/sidechain/enginenetworkstream.h"
+#include "engine/sidechain/shoutconnection.h"
 
 class SoundManager;
 class ControlPushButton;
