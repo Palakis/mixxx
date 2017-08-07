@@ -183,7 +183,7 @@ void DlgPrefBroadcast::enableCustomMetadataChanged(int value) {
     custom_title->setEnabled(value);
 }
 
-void DlgPrefBroadcast::btnCreateConnectionClicked(bool enabled) {
+void DlgPrefBroadcast::btnCreateConnectionClicked() {
     if(m_pBroadcastSettings->rowCount() >= BROADCAST_MAX_CONNECTIONS) {
         QMessageBox::warning(this, tr("Action failed."),
                 tr("You can't create more than %1 Live Broadcasting connections.")
