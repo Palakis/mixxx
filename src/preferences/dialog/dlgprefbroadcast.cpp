@@ -17,11 +17,9 @@ const char* kSettingsGroupHeader = "Settings for profile '%1'";
 const int kColumnEnabled = 0;
 const int kColumnName = 1;
 const int kColumnStatus = 2;
-const int kColumnRemove = 3;
 }
 
 DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
-                                   UserSettingsPointer _config,
                                    BroadcastSettingsPointer pBroadcastSettings)
         : DlgPreferencePage(parent),
           m_pBroadcastSettings(pBroadcastSettings),
@@ -35,29 +33,23 @@ DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
     cbSecureCredentials->setChecked(false);
 #endif
 
-    connect(profileList->horizontalHeader(), SIGNAL(sectionResized(int, int, int)),
+    connect(connectionList->horizontalHeader(), SIGNAL(sectionResized(int, int, int)),
             this, SLOT(onSectionResized()));
-    connect(cbRemoveMode, SIGNAL(stateChanged(int)),
-            this, SLOT(onRemoveModeChanged(int)));
 
     // Should be safe to directly access the underlying pointer
-    profileList->setModel(m_pBroadcastSettings.data());
-    profileList->setColumnHidden(kColumnRemove, true);
+    connectionList->setModel(m_pBroadcastSettings.data());
 
-    QAbstractItemDelegate* removeDelegate =
-            m_pBroadcastSettings->delegateForColumn(kColumnRemove, this);
-    connect(removeDelegate, SIGNAL(clicked(int, int)),
-            this, SLOT(onRemoveButtonClicked(int, int)));
-    profileList->setItemDelegateForColumn(kColumnRemove,
-            removeDelegate);
-
-    connect(btnCreateProfile, SIGNAL(clicked(bool)),
-            this, SLOT(btnCreateConnectionClicked(bool)));
-    connect(profileList, SIGNAL(clicked(const QModelIndex&)),
+    connect(connectionList, SIGNAL(clicked(const QModelIndex&)),
             this, SLOT(profileListItemSelected(const QModelIndex&)));
+    connect(btnRemoveConnection, SIGNAL(clicked(bool)),
+            this, SLOT(btnRemoveConnectionClicked()));
+    connect(btnRenameConnection, SIGNAL(clicked(bool)),
+            this, SLOT(btnRenameConnectionClicked()));
+    connect(btnCreateConnection, SIGNAL(clicked(bool)),
+            this, SLOT(btnCreateConnectionClicked()));
 
     // Highlight first row
-    profileList->selectRow(0);
+    connectionList->selectRow(0);
 
     m_pBroadcastEnabled = new ControlProxy(
             BROADCAST_PREF_KEY, "enabled", this);
@@ -122,62 +114,21 @@ DlgPrefBroadcast::~DlgPrefBroadcast() {
 }
 
 void DlgPrefBroadcast::slotResetToDefaults() {
-    BroadcastProfile dProfile("dontsave");
-
-    // Make sure to keep these values in sync with the constructor.
-    enableLiveBroadcasting->setChecked(false);
-    cbSecureCredentials->setChecked(false);
-    comboBoxServerType->setCurrentIndex(0);
-    mountpoint->setText(dProfile.getMountpoint());
-    host->setText(dProfile.getHost());
-    int iPort = dProfile.getPort();
-    VERIFY_OR_DEBUG_ASSERT(iPort != 0 && iPort <= 0xffff) {
-        port->setText(QString());
-    } else {
-        port->setText(QString::number(iPort));
-    }
-    login->setText(dProfile.getLogin());
-    password->setText(dProfile.getPassword());
-
-    checkBoxEnableReconnect->setChecked(dProfile.getEnableReconnect());
-    widgetReconnectControls->setEnabled(true);
-    spinBoxFirstDelay->setValue(dProfile.getReconnectFirstDelay());
-    spinBoxReconnectPeriod->setValue(dProfile.getReconnectPeriod());
-    checkBoxLimitReconnects->setChecked(dProfile.getLimitReconnects());
-    spinBoxMaximumRetries->setValue(dProfile.getMaximumRetries());
-    spinBoxMaximumRetries->setEnabled(true);
-    stream_name->setText(dProfile.getStreamName());
-    stream_website->setText(dProfile.getStreamWebsite());
-    stream_desc->setText(dProfile.getStreamDesc());
-    stream_genre->setText(dProfile.getStreamGenre());
-    stream_public->setChecked(dProfile.getStreamPublic());
-    ogg_dynamicupdate->setChecked(dProfile.getOggDynamicUpdate());
-    comboBoxEncodingBitrate->setCurrentIndex(comboBoxEncodingBitrate->findData(
-            dProfile.getBitrate()));
-    comboBoxEncodingFormat->setCurrentIndex(0);
-    comboBoxEncodingChannels->setCurrentIndex(0);
-    enableUtf8Metadata->setChecked(false);
-    enableCustomMetadata->setChecked(false);
-    metadata_format->setText(dProfile.getMetadataFormat());
-    custom_artist->setText(dProfile.getCustomArtist());
-    custom_title->setText(dProfile.getCustomTitle());
-    custom_artist->setEnabled(false);
-    custom_title->setEnabled(false);
 }
 
 void DlgPrefBroadcast::slotUpdate() {
     enableLiveBroadcasting->setChecked(m_pBroadcastEnabled->toBool());
 
-    cbRemoveMode->setChecked(false);
-
     // Don't let user modify information if
     // sending is enabled.
     if(m_pBroadcastEnabled->toBool()) {
         groupBoxProfileSettings->setEnabled(false);
-        btnCreateProfile->setEnabled(false);
+        btnCreateConnection->setEnabled(false);
+        btnRemoveConnection->setEnabled(false);
     } else {
         groupBoxProfileSettings->setEnabled(true);
-        btnCreateProfile->setEnabled(true);
+        btnCreateConnection->setEnabled(true);
+        btnRemoveConnection->setEnabled(true);
     }
 }
 
@@ -189,10 +140,12 @@ void DlgPrefBroadcast::slotApply()
     // sending is enabled.
     if(m_pBroadcastEnabled->toBool()) {
         groupBoxProfileSettings->setEnabled(false);
-        btnCreateProfile->setEnabled(false);
+        btnCreateConnection->setEnabled(false);
+        btnRemoveConnection->setEnabled(false);
     } else {
         groupBoxProfileSettings->setEnabled(true);
-        btnCreateProfile->setEnabled(true);
+        btnCreateConnection->setEnabled(true);
+        btnRemoveConnection->setEnabled(true);
     }
 
     // TODO(Palakis) : keep a local deep copy of the profiles list to
@@ -211,7 +164,8 @@ void DlgPrefBroadcast::broadcastEnabledChanged(double value) {
     bool enabled = value == 1.0; // 0 and 2 are disabled
 
     groupBoxProfileSettings->setEnabled(!enabled);
-    btnCreateProfile->setEnabled(!enabled);
+    btnCreateConnection->setEnabled(!enabled);
+    btnRemoveConnection->setEnabled(!enabled);
 
     enableLiveBroadcasting->setChecked(enabled);
 }
@@ -248,8 +202,6 @@ void DlgPrefBroadcast::btnCreateConnectionClicked(bool enabled) {
         newName = tr("Profile %1").arg(profileNumber);
         existingProfile = m_pBroadcastSettings->getProfileByName(newName);
     } while(!existingProfile.isNull());
-
-    // TODO(Palakis): add a safety check to avoid infinite looping
 
     m_pBroadcastSettings->createProfile(newName);
 }
@@ -437,42 +389,52 @@ void DlgPrefBroadcast::setValuesToProfile(BroadcastProfilePtr profile) {
     profile->setMetadataFormat(metadata_format->text());
 }
 
-void DlgPrefBroadcast::onRemoveButtonClicked(int column, int row) {
+void DlgPrefBroadcast::btnRemoveConnectionClicked() {
     if(m_pBroadcastSettings->rowCount() < 2) {
         QMessageBox::information(this, tr("Action forbidden"),
                 tr("At least one connection profile is required."));
         return;
     }
 
-    BroadcastProfilePtr profile = m_pBroadcastSettings->profileAt(row);
-    if(profile) {
-        m_pBroadcastSettings->deleteProfile(profile);
+    if(m_pProfileListSelection) {
+        QString profileName = m_pProfileListSelection->getProfileName();
+        auto response = QMessageBox::question(this, tr("Confirmation required"),
+                    tr("Are you sure you want to delete '%1'?")
+                    .arg(profileName), QMessageBox::Yes, QMessageBox::No);
 
-        profileList->selectRow(0);
-        QItemSelectionModel* selected = profileList->selectionModel();
-        profileListItemSelected(selected->currentIndex());
+        if(response == QMessageBox::Yes) {
+            m_pBroadcastSettings->deleteProfile(m_pProfileListSelection);
+
+            connectionList->selectRow(0);
+            QItemSelectionModel* selected = connectionList->selectionModel();
+            profileListItemSelected(selected->currentIndex());
+        }
+    }
+}
+
+void DlgPrefBroadcast::btnRenameConnectionClicked() {
+    if(m_pProfileListSelection) {
+        QString profileName = m_pProfileListSelection->getProfileName();
+
+        bool ok = false;
+        QString newName =
+                QInputDialog::getText(this, tr("Renaming '%1'").arg(profileName),
+                        tr("New name for '%1':").arg(profileName),
+                        QLineEdit::Normal, profileName, &ok);
+        if(ok) {
+            m_pProfileListSelection->setProfileName(newName);
+        }
     }
 }
 
 void DlgPrefBroadcast::onSectionResized() {
-    float width = (float)profileList->width();
+    float width = (float)connectionList->width();
 
     sender()->blockSignals(true);
-    profileList->setColumnWidth(kColumnEnabled, 100);
-    profileList->setColumnWidth(kColumnName, width * 0.45);
-    profileList->setColumnWidth(kColumnStatus, width * 0.20);
+    connectionList->setColumnWidth(kColumnEnabled, 100);
+    connectionList->setColumnWidth(kColumnName, width * 0.70);
     // The last column is automatically resized to fill
     // the remaining width, thanks to stretchLastSection set to true.
     sender()->blockSignals(false);
 }
 
-void DlgPrefBroadcast::onRemoveModeChanged(int value) {
-    bool enabled = (value == Qt::Checked ? true : false);
-
-    btnCreateProfile->setEnabled(!enabled);
-    groupBoxProfileSettings->setEnabled(!enabled);
-
-    // Hide the "Enabled" column and show the "remove" column
-    profileList->setColumnHidden(kColumnEnabled, enabled);
-    profileList->setColumnHidden(kColumnRemove, !enabled);
-}

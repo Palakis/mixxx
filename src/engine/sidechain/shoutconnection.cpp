@@ -4,8 +4,11 @@
 #include <QtDebug>
 #include <QUrl>
 
+// These includes are only required by ignoreSigpipe, which is unix-only
+#ifndef __WINDOWS__
 #include <signal.h>
 #include <unistd.h>
+#endif
 
 // shout.h checks for WIN32 to see if we are on Windows.
 #ifdef WIN64
@@ -65,11 +68,9 @@ ShoutConnection::ShoutConnection(BroadcastProfilePtr profile,
           m_limitReconnects(true),
           m_maximumRetries(10) {
     setStatus(BroadcastProfile::STATUS_UNCONNECTED);
-
     setState(NETWORKSTREAMWORKER_STATE_INIT);
 
     // shout_init() should've already been called by now
-
     if (!(m_pShout = shout_new())) {
         errorDialog(tr("Mixxx encountered a problem"),
                 tr("Could not allocate shout_t"));
@@ -874,7 +875,7 @@ void ShoutConnection::tryReconnect() {
 }
 
 void ShoutConnection::outputAvailable() {
-	m_readSema.release();
+    m_readSema.release();
 }
 
 void ShoutConnection::setOutputFifo(QSharedPointer<FIFO<CSAMPLE>> pOutputFifo) {
@@ -967,7 +968,7 @@ void ShoutConnection::ignoreSigpipe() {
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = SIG_IGN;
     if (sigaction(SIGPIPE, &sa, NULL) != 0) {
-        qDebug() << "EngineBroadcast::ignoreSigpipe() failed";
+        qDebug() << "ShoutConnection::ignoreSigpipe() failed";
     }
 #else
     // http://www.microhowto.info/howto/ignore_sigpipe_without_affecting_other_threads_in_a_process.html
@@ -976,7 +977,7 @@ void ShoutConnection::ignoreSigpipe() {
     sigaddset(&sigpipe_mask, SIGPIPE);
     sigset_t saved_mask;
     if (pthread_sigmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) != 0) {
-        qDebug() << "EngineBroadcast::ignoreSigpipe() failed";
+        qDebug() << "ShoutConnection::ignoreSigpipe() failed";
     }
 #endif
 }

@@ -690,7 +690,6 @@ class MixxxCore(Feature):
                    "preferences/broadcastprofile.cpp",
                    "preferences/upgrade.cpp",
                    "preferences/dlgpreferencepage.cpp",
-                   "preferences/pushbuttondelegate.cpp",
 
                    "effects/effectmanifest.cpp",
                    "effects/effectmanifestparameter.cpp",
@@ -765,7 +764,6 @@ class MixxxCore(Feature):
                    "engine/enginedeck.cpp",
                    "engine/engineaux.cpp",
                    "engine/channelmixer_autogen.cpp",
-                   "engine/sidechain/shoutconnection.cpp",
 
                    "engine/enginecontrol.cpp",
                    "engine/ratecontrol.cpp",

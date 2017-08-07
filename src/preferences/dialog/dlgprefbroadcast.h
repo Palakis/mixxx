@@ -17,7 +17,6 @@ class DlgPrefBroadcast : public DlgPreferencePage, public Ui::DlgPrefBroadcastDl
     Q_OBJECT
   public:
     DlgPrefBroadcast(QWidget *parent,
-                     UserSettingsPointer _config,
                      BroadcastSettingsPointer pBroadcastSettings);
     virtual ~DlgPrefBroadcast();
 
@@ -30,16 +29,16 @@ class DlgPrefBroadcast : public DlgPreferencePage, public Ui::DlgPrefBroadcastDl
     void checkBoxEnableReconnectChanged(int value);
     void checkBoxLimitReconnectsChanged(int value);
     void enableCustomMetadataChanged(int value);
-    void btnCreateConnectionClicked(bool enabled);
     void profileListItemSelected(const QModelIndex& index);
 
   signals:
     void apply(const QString &);
 
   private slots:
-    void onRemoveButtonClicked(int column, int row);
+    void btnCreateConnectionClicked();
+    void btnRenameConnectionClicked();
+    void btnRemoveConnectionClicked();
     void onSectionResized();
-    void onRemoveModeChanged(int value);
 
   private:
     void getValuesFromProfile(BroadcastProfilePtr profile);
