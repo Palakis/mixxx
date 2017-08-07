@@ -56,26 +56,21 @@ class NetworkStreamWorker {
     void startStream(double samplerate, int numOutputChannels);
     void stopStream();
 
-    void processWrite(int outChunkSize, int readAvailable,
-            CSAMPLE* dataPtr1, ring_buffer_size_t size1,
-            CSAMPLE* dataPtr2, ring_buffer_size_t size2);
-
-    int getWriteExpected();
-    void write(const CSAMPLE* buffer, int frames);
-    void writeSilence(int frames);
-    void writingDone(int interval);
-
     virtual bool threadWaiting();
 
     qint64 getStreamTimeUs();
     qint64 getStreamTimeFrames();
 
-    void setDrifting(bool isDrifting) {
-        m_outputDrift = isDrifting;
-    }
-    bool isDrifting() {
-        return m_outputDrift;
-    }
+    void resetFramesWritten();
+    void addFramesWritten(qint64 frames);
+    qint64 framesWritten();
+
+    void resetOverflowCount();
+    void incOverflowCount();
+    int overflowCount();
+
+    void setOutputDrift(bool drift);
+    bool outputDrift();
 
     int getState();
     int getFunctionCode();
