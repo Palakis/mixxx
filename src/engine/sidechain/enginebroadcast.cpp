@@ -2,15 +2,6 @@
 
 #include <signal.h>
 
-// shout.h checks for WIN32 to see if we are on Windows.
-#ifdef WIN64
-#define WIN32
-#endif
-#include <shout/shout.h>
-#ifdef WIN64
-#undef WIN32
-#endif
-
 #include "broadcast/defs_broadcast.h"
 #include "control/controlpushbutton.h"
 #include "preferences/usersettings.h"
@@ -24,17 +15,9 @@ EngineBroadcast::EngineBroadcast(UserSettingsPointer pConfig,
         : m_settings(pBroadcastSettings),
           m_pConfig(pConfig),
           m_pNetworkStream(pNetworkStream) {
-    const bool persist = true;
-
-    m_pBroadcastEnabled = new ControlPushButton(
-            ConfigKey(BROADCAST_PREF_KEY,"enabled"), persist);
-    m_pBroadcastEnabled->setButtonMode(ControlPushButton::TOGGLE);
-    connect(m_pBroadcastEnabled, SIGNAL(valueChanged(double)),
-            this, SLOT(slotEnableCO(double)));
-
-    m_pStatusCO = new ControlObject(ConfigKey(BROADCAST_PREF_KEY, "status"));
-    m_pStatusCO->setReadOnly();
-    m_pStatusCO->forceSet(STATUSCO_UNCONNECTED);
+    m_pBroadcastEnabled = new ControlProxy(
+                BROADCAST_PREF_KEY, "enabled", this);
+    m_pBroadcastEnabled->connectValueChanged(SLOT(slotEnableCO(double)));
 
     // Initialize connections list from the current state of BroadcastSettings
     QList<BroadcastProfilePtr> profiles = m_settings->profiles();
@@ -53,17 +36,10 @@ EngineBroadcast::EngineBroadcast(UserSettingsPointer pConfig,
             this, SLOT(slotProfileRenamed(QString, BroadcastProfilePtr)));
     connect(m_settings.data(), SIGNAL(profilesChanged()),
             this, SLOT(slotProfilesChanged()));
-
-    // Initialize libshout
-    shout_init();
 }
 
 EngineBroadcast::~EngineBroadcast() {
-    delete m_pStatusCO;
-
-    m_pBroadcastEnabled->set(0);
-
-    shout_shutdown();
+    delete m_pBroadcastEnabled;
 }
 
 bool EngineBroadcast::addConnection(BroadcastProfilePtr profile) {
@@ -107,19 +83,8 @@ bool EngineBroadcast::removeConnection(BroadcastProfilePtr profile) {
 }
 
 void EngineBroadcast::slotEnableCO(double v) {
-    if (v > 1.0) {
-        // Wrap around manually .
-        // Wrapping around in WPushbutton does not work
-        // since the status button has 4 states, but this CO is bool
-        m_pBroadcastEnabled->set(0.0);
-        v = 0.0;
-    }
-
     if (v > 0.0) {
         slotProfilesChanged();
-        m_pStatusCO->forceSet(STATUSCO_CONNECTED);
-    } else {
-        m_pStatusCO->forceSet(STATUSCO_UNCONNECTED);
     }
 }
 

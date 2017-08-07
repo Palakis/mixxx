@@ -18,13 +18,6 @@ class ControlPushButton;
 class EngineBroadcast : public QObject {
     Q_OBJECT
   public:
-    enum StatusCOStates {
-        STATUSCO_UNCONNECTED = 0, // IDLE state, no error
-        STATUSCO_CONNECTING = 1, // 30 s max
-        STATUSCO_CONNECTED = 2, // On Air
-        STATUSCO_FAILURE = 3 // Happens when disconnected by an error
-    };
-
     EngineBroadcast(UserSettingsPointer pConfig,
                     BroadcastSettingsPointer pBroadcastSettings,
                     QSharedPointer<EngineNetworkStream> pNetworkStream);
@@ -47,9 +40,7 @@ class EngineBroadcast : public QObject {
     BroadcastSettingsPointer m_settings;
     UserSettingsPointer m_pConfig;
     QSharedPointer<EngineNetworkStream> m_pNetworkStream;
-
-    ControlPushButton* m_pBroadcastEnabled;
-    ControlObject* m_pStatusCO;
+    ControlProxy* m_pBroadcastEnabled;
 };
 
 #endif // ENGINE_SIDECHAIN_ENGINEBROADCAST_H

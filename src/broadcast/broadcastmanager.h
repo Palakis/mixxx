@@ -12,6 +12,13 @@ class SoundManager;
 class BroadcastManager : public QObject {
     Q_OBJECT
   public:
+    enum StatusCOStates {
+        STATUSCO_UNCONNECTED = 0, // IDLE state, no error
+        STATUSCO_CONNECTING = 1, // 30 s max
+        STATUSCO_CONNECTED = 2, // On Air
+        STATUSCO_FAILURE = 3 // Happens when disconnected by an error
+    };
+
     BroadcastManager(SettingsManager* pSettingsManager,
                      SoundManager* pSoundManager);
     virtual ~BroadcastManager();
@@ -33,7 +40,8 @@ class BroadcastManager : public QObject {
   private:
     UserSettingsPointer m_pConfig;
     QSharedPointer<EngineBroadcast> m_pBroadcast;
-    ControlProxy* m_pBroadcastEnabled;
+    ControlPushButton* m_pBroadcastEnabled;
+    ControlObject* m_pStatusCO;
 };
 
 #endif /* BROADCAST_BROADCASTMANAGER_H */
