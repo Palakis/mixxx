@@ -20,7 +20,7 @@
 
 EngineBroadcast::EngineBroadcast(UserSettingsPointer pConfig,
                                  BroadcastSettingsPointer pBroadcastSettings,
-                                 const std::unique_ptr<EngineNetworkStream>& pNetworkStream)
+                                 QSharedPointer<EngineNetworkStream> pNetworkStream)
         : m_settings(pBroadcastSettings),
           m_pConfig(pConfig),
           m_pNetworkStream(pNetworkStream) {

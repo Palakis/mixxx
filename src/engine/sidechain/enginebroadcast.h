@@ -27,7 +27,7 @@ class EngineBroadcast : public QObject {
 
     EngineBroadcast(UserSettingsPointer pConfig,
                     BroadcastSettingsPointer pBroadcastSettings,
-                    const std::unique_ptr<EngineNetworkStream>& pNetworkStream);
+                    QSharedPointer<EngineNetworkStream> pNetworkStream);
     virtual ~EngineBroadcast();
 
     bool addConnection(BroadcastProfilePtr profile);
@@ -46,7 +46,7 @@ class EngineBroadcast : public QObject {
 
     BroadcastSettingsPointer m_settings;
     UserSettingsPointer m_pConfig;
-    const std::unique_ptr<EngineNetworkStream>& m_pNetworkStream;
+    QSharedPointer<EngineNetworkStream> m_pNetworkStream;
 
     ControlPushButton* m_pBroadcastEnabled;
     ControlObject* m_pStatusCO;
