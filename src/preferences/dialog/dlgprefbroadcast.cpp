@@ -23,6 +23,7 @@ DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
                                    BroadcastSettingsPointer pBroadcastSettings)
         : DlgPreferencePage(parent),
           m_pBroadcastSettings(pBroadcastSettings),
+          m_pSettingsModel(new BroadcastSettingsModel()),
           m_pProfileListSelection(nullptr) {
     setupUi(this);
 
@@ -36,8 +37,8 @@ DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
     connect(connectionList->horizontalHeader(), SIGNAL(sectionResized(int, int, int)),
             this, SLOT(onSectionResized()));
 
-    // Should be safe to directly access the underlying pointer
-    connectionList->setModel(m_pBroadcastSettings.data());
+    updateModel();
+    connectionList->setModel(m_pSettingsModel);
 
     connect(connectionList, SIGNAL(clicked(const QModelIndex&)),
             this, SLOT(profileListItemSelected(const QModelIndex&)));
@@ -111,12 +112,14 @@ DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
 }
 
 DlgPrefBroadcast::~DlgPrefBroadcast() {
+    delete m_pSettingsModel;
 }
 
 void DlgPrefBroadcast::slotResetToDefaults() {
 }
 
 void DlgPrefBroadcast::slotUpdate() {
+    updateModel();
     enableLiveBroadcasting->setChecked(m_pBroadcastEnabled->toBool());
 
     // Don't let user modify information if
@@ -156,7 +159,8 @@ void DlgPrefBroadcast::slotApply()
     if(m_pProfileListSelection) {
         setValuesToProfile(m_pProfileListSelection);
     }
-    m_pBroadcastSettings->saveAll();
+    m_pBroadcastSettings->applyModel(m_pSettingsModel);
+    updateModel();
 }
 
 void DlgPrefBroadcast::broadcastEnabledChanged(double value) {
@@ -184,14 +188,14 @@ void DlgPrefBroadcast::enableCustomMetadataChanged(int value) {
 }
 
 void DlgPrefBroadcast::btnCreateConnectionClicked() {
-    if(m_pBroadcastSettings->rowCount() >= BROADCAST_MAX_CONNECTIONS) {
+    if(m_pSettingsModel->rowCount() >= BROADCAST_MAX_CONNECTIONS) {
         QMessageBox::warning(this, tr("Action failed."),
                 tr("You can't create more than %1 Live Broadcasting connections.")
                 .arg(BROADCAST_MAX_CONNECTIONS));
         return;
     }
-
-    int profileNumber = m_pBroadcastSettings->rowCount();
+  
+    int profileNumber = m_pSettingsModel->rowCount();
 
     // Generate a new profile name based on the current profile count.
     // Try the number above if the generated name is already taken.
@@ -200,28 +204,37 @@ void DlgPrefBroadcast::btnCreateConnectionClicked() {
     do {
         profileNumber++;
         newName = tr("Profile %1").arg(profileNumber);
-        existingProfile = m_pBroadcastSettings->getProfileByName(newName);
+        existingProfile = m_pSettingsModel->getProfileByName(newName);
     } while(!existingProfile.isNull());
 
-    m_pBroadcastSettings->createProfile(newName);
+    BroadcastProfilePtr newProfile(new BroadcastProfile(newName));
+    if(m_pProfileListSelection) {
+        m_pProfileListSelection->copyValuesTo(newProfile);
+    }
+    m_pSettingsModel->addProfileToModel(newProfile);
 }
 
 void DlgPrefBroadcast::profileListItemSelected(const QModelIndex& index) {
     setValuesToProfile(m_pProfileListSelection);
 
-    QString selectedName = m_pBroadcastSettings->data(index,
+    QString selectedName = m_pSettingsModel->data(index,
             Qt::DisplayRole).toString();
     BroadcastProfilePtr profile =
-            m_pBroadcastSettings->getProfileByName(selectedName);
+            m_pSettingsModel->getProfileByName(selectedName);
     if(profile) {
         getValuesFromProfile(profile);
         m_pProfileListSelection = profile;
     }
 }
 
+void DlgPrefBroadcast::updateModel() {
+    m_pSettingsModel->resetFromSettings(m_pBroadcastSettings);
+}
+
 void DlgPrefBroadcast::getValuesFromProfile(BroadcastProfilePtr profile) {
-    if(!profile)
+    if(!profile) {
         return;
+    }
 
     // Set groupbox header
     QString headerText =
@@ -390,7 +403,7 @@ void DlgPrefBroadcast::setValuesToProfile(BroadcastProfilePtr profile) {
 }
 
 void DlgPrefBroadcast::btnRemoveConnectionClicked() {
-    if(m_pBroadcastSettings->rowCount() < 2) {
+    if(m_pSettingsModel->rowCount() < 2) {
         QMessageBox::information(this, tr("Action forbidden"),
                 tr("At least one connection profile is required."));
         return;
@@ -403,7 +416,7 @@ void DlgPrefBroadcast::btnRemoveConnectionClicked() {
                     .arg(profileName), QMessageBox::Yes, QMessageBox::No);
 
         if(response == QMessageBox::Yes) {
-            m_pBroadcastSettings->deleteProfile(m_pProfileListSelection);
+            m_pSettingsModel->deleteProfileFromModel(m_pProfileListSelection);
 
             connectionList->selectRow(0);
             QItemSelectionModel* selected = connectionList->selectionModel();

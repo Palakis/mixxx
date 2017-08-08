@@ -31,6 +31,7 @@ class BroadcastProfile : public QObject {
     bool equals(BroadcastProfilePtr other);
     bool valuesEquals(BroadcastProfilePtr other);
     BroadcastProfilePtr valuesCopy();
+    void copyValuesTo(BroadcastProfilePtr other);
 
     static BroadcastProfilePtr loadFromFile(const QString& filename);
     static bool validName(const QString& str);
@@ -134,6 +135,9 @@ class BroadcastProfile : public QObject {
   signals:
     void profileNameChanged(QString oldName, QString newName);
     void connectionStatusChanged(int status);
+
+  public slots:
+    void relayConnectionStatus(int status);
 
   private:
     void adoptDefaultValues();
