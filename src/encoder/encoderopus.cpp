@@ -226,7 +226,7 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
     }
 
     int readRequired = kChannelSamplesPerFrame * 2;
-    if(m_pFrameBuffer->readAvailable() >= readRequired) {
+    while(m_pFrameBuffer->readAvailable() >= readRequired) {
         CSAMPLE* dataPtr = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
         m_pFrameBuffer->read(dataPtr, readRequired);
 
