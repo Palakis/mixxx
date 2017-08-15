@@ -188,9 +188,11 @@ unsigned char* EncoderOpus::createOpusTags(int* size) {
     memcpy(data + pos, version, versionLength);
     pos += versionLength;
 
-    // Number of comments
+    // Number of comments (4 bytes, little-endian)
     int comments = m_opusComments.size();
-    data[pos++] = comments;
+    for(int x = 0; x < 4; x++) {
+        data[pos++] = (comments >> (x*8)) & 0xFF;
+    }
 
     // Comments
     // each comment is a string length field (4 bytes, little-endian)
