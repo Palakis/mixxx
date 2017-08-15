@@ -31,7 +31,7 @@ class EncoderOpus: public Encoder {
     unsigned char* createOpusHeader(int* size);
     unsigned char* createOpusTags(int* size);
     void initStream();
-    void pushPacketToStream(ogg_packet* pPacket);
+    void writePage(ogg_packet* pPacket);
 
     int m_bitrate;
     int m_channels;

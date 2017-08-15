@@ -85,6 +85,7 @@ void EncoderOpus::initStream() {
     ogg_packet packet;
     ogg_stream_clear(&m_oggStream);
     ogg_stream_init(&m_oggStream, getSerial());
+    m_header_write = true;
     m_granulePos = 0;
     m_packetNumber = 0;
 
@@ -208,8 +209,19 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         return;
     }
 
-    int writeCount = math_min(size, m_pFrameBuffer->writeAvailable());
+    kLogger.debug() << "encodeBuffer:" << size << "samples";
+
+    int writeRequired = size;
+    int writeAvailable = m_pFrameBuffer->writeAvailable();
+    if(writeRequired > writeAvailable) {
+        kLogger.warning() << "FIFO buffer too small, loosing samples!"
+                          << "required:" << writeRequired
+                          << "; available: " << writeAvailable;
+    }
+
+    int writeCount = math_min(writeRequired, writeAvailable);
     if(writeCount > 0) {
+        kLogger.debug() << "writing" << writeCount << "samples to FIFO buffer";
         m_pFrameBuffer->write(samples, writeCount);
     }
 
@@ -241,13 +253,17 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         m_granulePos += samplesPerChannel;
         m_packetNumber += 1;
 
-        kLogger.debug() << "encoding success, pushing to stream";
-        pushPacketToStream(&packet);
+        kLogger.debug() << "new packet"
+                        << "; granulepos:" << packet.granulepos
+                        << "; packetno:" << packet.packetno
+                        << "; bytes:" << packet.bytes;
+
+        writePage(&packet);
         free(packetData);
     }
 }
 
-void EncoderOpus::pushPacketToStream(ogg_packet* pPacket) {
+void EncoderOpus::writePage(ogg_packet* pPacket) {
     if(!pPacket) {
         return;
     }
