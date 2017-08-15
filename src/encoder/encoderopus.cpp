@@ -25,7 +25,7 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_header_write(false),
       m_packetNumber(0),
       m_granulePos(0) {
-    m_opusComments.value("ENCODER", "mixxx/libopus");
+    m_opusComments.insert("ENCODER", "mixxx/libopus");
     m_pOpusBuffer = (unsigned char*)malloc(kMaxOpusBufferSize);
     ogg_stream_init(&m_oggStream, rand());
 }
