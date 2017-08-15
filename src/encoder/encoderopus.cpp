@@ -6,17 +6,10 @@
 #include "encoder/encoderopus.h"
 
 namespace {
-typedef struct {
-    int version;
-    int channels;
-    int preskip;
-    ogg_uint32_t input_sample_rate;
-    int gain;
-    int channel_mapping;
-    int nb_streams;
-    int nb_coupled;
-    unsigned char stream_map[255];
-} OpusHeader;
+// From libjitsi's Opus encoder:
+// 1 byte TOC + maximum frame size (1275)
+// See https://tools.ietf.org/html/rfc6716#section-3.2
+const int kMaxOpusBufferSize = 1+1275;
 
 const int kChannelSamplesPerFrame = 1920; // Opus' accepted sample size for 48khz
 const mixxx::Logger kLogger("EncoderOpus");
@@ -32,7 +25,8 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_header_write(false),
       m_packetNumber(0),
       m_granulePos(0) {
-    ogg_stream_init(&m_oggStream, getSerial());
+    m_pOpusBuffer = (unsigned char*)malloc(kMaxOpusBufferSize);
+    ogg_stream_init(&m_oggStream, rand());
 }
 
 EncoderOpus::~EncoderOpus() {
@@ -45,6 +39,7 @@ EncoderOpus::~EncoderOpus() {
     }
 
     ogg_stream_clear(&m_oggStream);
+    delete m_pOpusBuffer;
 }
 
 void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
@@ -85,6 +80,129 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     return 0;
 }
 
+void EncoderOpus::initStream() {
+    // Based on BUTT's Opus encoder implementation
+    ogg_packet packet;
+    ogg_stream_clear(&m_oggStream);
+    ogg_stream_init(&m_oggStream, getSerial());
+    m_granulePos = 0;
+    m_packetNumber = 0;
+
+    int headerSize = 0;
+    unsigned char* headerData = createOpusHeader(&headerSize);
+
+    int tagsSize = 0;
+    unsigned char* tagsData = createOpusTags(&tagsSize);
+
+    // Push stream header
+    packet.b_o_s = 1;
+    packet.e_o_s = 0;
+    packet.granulepos = 0;
+    packet.packetno = m_packetNumber++;
+    packet.packet = headerData;
+    packet.bytes = headerSize;
+
+    ogg_stream_packetin(&m_oggStream, &packet);
+
+    // Push tags
+    packet.b_o_s = 0;
+    packet.e_o_s = 0;
+    packet.granulepos = 0;
+    packet.packetno = m_packetNumber++;
+    packet.packet = tagsData;
+    packet.bytes = tagsSize;
+
+    ogg_stream_packetin(&m_oggStream, &packet);
+
+    free(headerData);
+    free(tagsData);
+}
+
+unsigned char* EncoderOpus::createOpusHeader(int* size) {
+    unsigned char* data = (unsigned char*)malloc(1024);
+    memset(data, 0, *size);
+    int i = 0; // Current position
+
+    // Opus identification header
+    // Format from https://tools.ietf.org/html/rfc7845.html#section-5.1
+
+    // Magic signature (8 bytes)
+    memcpy(data + 0, "OpusHead", 8);
+    i += 8;
+
+    // Version number (1 byte, fixed to 1)
+    data[i++] = 0x01;
+
+    // Channel count (1 byte)
+    data[i++] = (char)m_channels;
+
+    // Pre-skip (2 bytes, little-endian)
+    int preskip = 0;
+    opus_encoder_ctl(m_pOpus, OPUS_GET_LOOKAHEAD(&preskip));
+    for(int x = 0; x < 2; x++) {
+        data[i++] = (preskip >> (x*8)) & 0xFF;
+    }
+
+    // Sample rate (4 bytes, little endian)
+    for(int x = 0; x < 4; x++) {
+        data[i++] = (m_samplerate >> (x*8)) & 0xFF;
+    }
+
+    // Output gain (2 bytes, little-endian, fixed to 0)
+    data[i++] = 0;
+    data[i++] = 0;
+
+    // Channel mapping (1 byte, fixed to 0, means one stream)
+    data[i++] = 0;
+
+    // Ignore channel mapping table
+    *size = i;
+    return data;
+}
+
+unsigned char* EncoderOpus::createOpusTags(int* size) {
+    unsigned char* data = (unsigned char*)malloc(1024);
+    memset(data, 0, *size);
+    int i = 0; // Current position
+
+    // Opus comment header
+    // Format from https://tools.ietf.org/html/rfc7845.html#section-5.2
+
+    // Magic signature (8 bytes)
+    memcpy(data + 0, "OpusTags", 8);
+    i += 8;
+
+    // Vendor string (mandatory)
+    // length field (4 bytes, little-endian) + actual string
+    const char* version = opus_get_version_string();
+    int versionLength = strlen(version);
+    // Write length field
+    for(int x = 0; x < 4; x++) {
+        data[i++] = (versionLength >> (x*8)) & 0xFF;
+    }
+    // Write string
+    memcpy(data + i, version, versionLength);
+    i += versionLength;
+
+    // Number of comments
+    data[i++] = 1;
+
+    // First and only comment: encoder info
+    // length field (4 bytes, little-endian) + actual string
+    const char* encoderInfo = "ENCODER=mixxx/libopus";
+    int infoLength = strlen(encoderInfo);
+    // Write length field
+    for(int x = 0; x < 4; x++) {
+        data[i++] = (infoLength >> (x*8)) & 0xFF;
+    }
+    // Write string
+    memcpy(data + i, encoderInfo, infoLength);
+    i += infoLength;
+
+    *size = i;
+    return data;
+}
+
 void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
     if(!m_pOpus) {
         return;
@@ -100,25 +218,17 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         CSAMPLE* dataPtr = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
         m_pFrameBuffer->read(dataPtr, readRequired);
 
-        // Based off libjitsi's Opus encoder:
-        // 1 byte TOC + maximum frame size (1275)
-        // See https://tools.ietf.org/html/rfc6716#section-3.2
-        int maxSize = 1+1275;
-        unsigned char* tmpPacket = (unsigned char*)malloc(maxSize);
-
         int samplesPerChannel = readRequired / m_channels;
-        int result = opus_encode_float(m_pOpus, dataPtr, samplesPerChannel, tmpPacket, maxSize);
+        int result = opus_encode_float(m_pOpus, dataPtr, samplesPerChannel, m_pOpusBuffer, kMaxOpusBufferSize);
         free(dataPtr);
 
         if(result < 1) {
             kLogger.warning() << "opus_encode_float failed:" << opusErrorString(result);
-            free(tmpPacket);
             return;
         }
 
         unsigned char* packetData = (unsigned char*)malloc(result);
-        memcpy(packetData, tmpPacket, result);
-        free(tmpPacket);
+        memcpy(packetData, m_pOpusBuffer, result);
 
         ogg_packet packet;
         packet.b_o_s = 0;
@@ -134,37 +244,6 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         pushPacketToStream(&packet);
         free(packetData);
     }
-}
-
-void EncoderOpus::initStream() {
-    // Based on BUTT's Opus encoder implementation
-    ogg_packet packet;
-    ogg_stream_clear(&m_oggStream);
-    ogg_stream_init(&m_oggStream, getSerial());
-    m_granulePos = 0;
-    m_packetNumber = 0;
-
-    // Push Opus header
-    packet.b_o_s = 1;
-    packet.e_o_s = 0;
-    packet.granulepos = 0;
-    packet.packetno = m_packetNumber++;
-    packet.packet = nullptr;
-    packet.bytes = 0;
-
-    ogg_stream_packetin(&m_oggStream, &packet);
-
-    /*
-    // Push tags
-    packet.b_o_s = 0;
-    packet.e_o_s = 0;
-    packet.granulepos = 0;
-    packet.packetno = m_packetNumber++;
-    packet.packet = nullptr;
-    packet.bytes = 0;
-
-    ogg_stream_packetin(&m_oggStream, &packet);
-    */
 }
 
 void EncoderOpus::pushPacketToStream(ogg_packet* pPacket) {

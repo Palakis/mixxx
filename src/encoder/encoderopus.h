@@ -28,6 +28,8 @@ class EncoderOpus: public Encoder {
   private:
     static QString opusErrorString(int error);
     static int getSerial();
+    unsigned char* createOpusHeader(int* size);
+    unsigned char* createOpusTags(int* size);
     void initStream();
     void pushPacketToStream(ogg_packet* pPacket);
 
@@ -37,6 +39,7 @@ class EncoderOpus: public Encoder {
     EncoderCallback* m_pCallback;
     FIFO<CSAMPLE>* m_pFrameBuffer;
     OpusEncoder* m_pOpus;
+    unsigned char* m_pOpusBuffer;
     ogg_stream_state m_oggStream;
     ogg_page m_oggPage;
     bool m_header_write;
