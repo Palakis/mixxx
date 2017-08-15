@@ -241,6 +241,7 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         m_granulePos += samplesPerChannel;
         m_packetNumber += 1;
 
+        kLogger.debug() << "encoding success, pushing to stream";
         pushPacketToStream(&packet);
         free(packetData);
     }
@@ -251,7 +252,7 @@ void EncoderOpus::pushPacketToStream(ogg_packet* pPacket) {
         return;
     }
 
-    // Write initial stream header if not already done
+    // Push headers prepared by initStream if not already done
     int result;
     if(m_header_write) {
         while (true) {
@@ -259,6 +260,7 @@ void EncoderOpus::pushPacketToStream(ogg_packet* pPacket) {
             if (result == 0)
                 break;
 
+            kLogger.debug() << "pushing headers to output";
             m_pCallback->write(m_oggPage.header, m_oggPage.body,
                                m_oggPage.header_len, m_oggPage.body_len);
         }
@@ -276,6 +278,7 @@ void EncoderOpus::pushPacketToStream(ogg_packet* pPacket) {
             break;
         }
 
+        kLogger.debug() << "pushing data page to output";
         m_pCallback->write(m_oggPage.header, m_oggPage.body,
                            m_oggPage.header_len, m_oggPage.body_len);
 
