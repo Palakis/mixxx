@@ -223,8 +223,6 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         return;
     }
 
-    kLogger.debug() << "encodeBuffer:" << size << "samples";
-
     int writeRequired = size;
     int writeAvailable = m_pFrameBuffer->writeAvailable();
     if(writeRequired > writeAvailable) {
@@ -302,7 +300,6 @@ void EncoderOpus::writePage(ogg_packet* pPacket) {
             break;
         }
 
-        kLogger.debug() << "pushing data page to output";
         m_pCallback->write(m_oggPage.header, m_oggPage.body,
                            m_oggPage.header_len, m_oggPage.body_len);
 
