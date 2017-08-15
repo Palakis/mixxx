@@ -22,10 +22,13 @@
 #endif
 #include "encoder/encoderwave.h"
 #include "encoder/encodersndfileflac.h"
+#include "encoder/encoderopus.h"
+
 #include "encoder/encodermp3settings.h"
 #include "encoder/encodervorbissettings.h"
 #include "encoder/encoderwavesettings.h"
 #include "encoder/encoderflacsettings.h"
+#include "encoder/encoderopussettings.h"
 
 #include <QList>
 
@@ -38,11 +41,12 @@ const EncoderFactory& EncoderFactory::getFactory()
 
 EncoderFactory::EncoderFactory() {
     // Add new supported formats here. Also modify the getNewEncoder/getEncoderSettings method.
-    m_formats.append(Encoder::Format("WAV PCM",ENCODING_WAVE, true));
-    m_formats.append(Encoder::Format("AIFF PCM",ENCODING_AIFF, true));
+    m_formats.append(Encoder::Format("WAV PCM", ENCODING_WAVE, true));
+    m_formats.append(Encoder::Format("AIFF PCM", ENCODING_AIFF, true));
     m_formats.append(Encoder::Format("FLAC", ENCODING_FLAC, true));
-    m_formats.append(Encoder::Format("MP3",ENCODING_MP3, false));
-    m_formats.append(Encoder::Format("OGG Vorbis",ENCODING_OGG, false));
+    m_formats.append(Encoder::Format("MP3", ENCODING_MP3, false));
+    m_formats.append(Encoder::Format("OGG Vorbis", ENCODING_OGG, false));
+    m_formats.append(Encoder::Format("Opus", ENCODING_OPUS, false));
 }
 
 const QList<Encoder::Format> EncoderFactory::getFormats() const
@@ -99,8 +103,11 @@ EncoderPointer EncoderFactory::getNewEncoder(Encoder::Format format,
         pEncoder = std::make_shared<EncoderVorbis>(pCallback);
         #endif
         pEncoder->setEncoderSettings(EncoderVorbisSettings(pConfig));
+    } else if (format.internalName == ENCODING_OPUS) {
+        pEncoder = std::make_shared<EncoderOpus>(pCallback);
+        pEncoder->setEncoderSettings(EncoderOpusSettings(pConfig));
     } else {
-        qWarning() << "Unsuported format requested! " << format.internalName;
+        qWarning() << "Unsupported format requested! " << format.internalName;
         DEBUG_ASSERT(false);
         pEncoder = std::make_shared<EncoderWave>(pCallback);
         pEncoder->setEncoderSettings(EncoderWaveSettings(pConfig, format));
@@ -121,8 +128,10 @@ EncoderSettingsPointer EncoderFactory::getEncoderSettings(Encoder::Format format
         return std::make_shared<EncoderMp3Settings>(pConfig);
     } else if (format.internalName == ENCODING_OGG) {
         return std::make_shared<EncoderVorbisSettings>(pConfig);
+    } else if (format.internalName == ENCODING_OPUS) {
+        return std::make_shared<EncoderOpusSettings>(pConfig);
     } else {
-        qWarning() << "Unsuported format requested! " << format.internalName;
+        qWarning() << "Unsupported format requested! " << format.internalName;
         DEBUG_ASSERT(false);
         return std::make_shared<EncoderWaveSettings>(pConfig, format);
     }
