@@ -6,7 +6,7 @@
 #include "encoder/encoderopus.h"
 
 namespace {
-const int kSamplesPerFrame = 1920; // Opus' accepted sample size for 48khz
+const int kChannelSamplesPerFrame = 1920; // Opus' accepted sample size for 48khz
 const mixxx::Logger kLogger("EncoderOpus");
 }
 
@@ -57,8 +57,12 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
         return -1;
     }
 
-    // Twice the required sample count
-    m_pFrameBuffer = new FIFO<CSAMPLE>((kSamplesPerFrame * m_channels) * 2);
+    // Optimize encoding for high-quality music
+    opus_encoder_ctl(m_pOpus, OPUS_SET_COMPLEXITY(10));
+    opus_encoder_ctl(m_pOpus, OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
+
+    // Four times the required sample count to give enough room for buffering
+    m_pFrameBuffer = new FIFO<CSAMPLE>(m_channels * kChannelSamplesPerFrame * 4);
 
     return 0;
 }
@@ -73,10 +77,10 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         m_pFrameBuffer->write(samples, writeCount);
     }
 
-    if(m_pFrameBuffer->readAvailable() >= kSamplesPerFrame) {
-        int dataSize = kSamplesPerFrame / m_channels;
-        CSAMPLE* dataPtr;
-        m_pFrameBuffer->read(dataPtr, dataSize);
+    int readRequired = kChannelSamplesPerFrame * 2;
+    if(m_pFrameBuffer->readAvailable() >= readRequired) {
+        CSAMPLE* dataPtr = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
+        m_pFrameBuffer->read(dataPtr, readRequired);
 
         // Based off libjitsi's Opus encoder:
         // 1 byte TOC + maximum frame size (1275)
@@ -84,7 +88,9 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         int maxSize = 1+1275;
         unsigned char* tmpPacket = (unsigned char*)malloc(maxSize);
 
-        int result = opus_encode_float(m_pOpus, dataPtr, dataSize, tmpPacket, maxSize);
+        int result = opus_encode_float(m_pOpus, dataPtr, readRequired / m_channels, tmpPacket, maxSize);
+        free(dataPtr);
+
         if(result < 1) {
             kLogger.warning() << "opus_encode_float failed:" << opusErrorString(result);
             free((unsigned char*)tmpPacket);
