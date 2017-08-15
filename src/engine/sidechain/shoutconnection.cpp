@@ -395,10 +395,14 @@ void ShoutConnection::updateFromPreferences() {
         m_encoder = EncoderFactory::getFactory().getNewEncoder(
             EncoderFactory::getFactory().getFormatFor(ENCODING_OGG), m_pConfig, this);
         m_encoder->setEncoderSettings(broadcastSettings);
-    } else if (m_format_is_opus) {
+    }
+    #ifdef __OPUS__
+    else if (m_format_is_opus) {
         m_encoder = EncoderFactory::getFactory().getNewEncoder(
             EncoderFactory::getFactory().getFormatFor(ENCODING_OPUS), m_pConfig, this);
-    } else {
+    }
+    #endif
+    else {
         kLogger.warning() << "**** Unknown Encoder Format";
         setState(NETWORKSTREAMWORKER_STATE_ERROR);
         m_lastErrorStr = "Encoder format error";
