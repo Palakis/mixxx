@@ -27,14 +27,21 @@ class EncoderOpus: public Encoder {
 
   private:
     static QString opusErrorString(int error);
+    static int getSerial();
+    void initStream();
+    void pushPacketToStream(ogg_packet* pPacket);
 
     int m_bitrate;
     int m_channels;
     int m_samplerate;
     EncoderCallback* m_pCallback;
-    OpusEncoder* m_pOpus;
     FIFO<CSAMPLE>* m_pFrameBuffer;
+    OpusEncoder* m_pOpus;
+    ogg_stream_state m_oggStream;
+    ogg_page m_oggPage;
     bool m_header_write;
+    int m_packetNumber;
+    ogg_int64_t m_granulePos;
 };
 
 #endif // ENCODER_ENCODEROPUS_H

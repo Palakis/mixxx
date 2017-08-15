@@ -6,6 +6,18 @@
 #include "encoder/encoderopus.h"
 
 namespace {
+typedef struct {
+    int version;
+    int channels;
+    int preskip;
+    ogg_uint32_t input_sample_rate;
+    int gain;
+    int channel_mapping;
+    int nb_streams;
+    int nb_coupled;
+    unsigned char stream_map[255];
+} OpusHeader;
+
 const int kChannelSamplesPerFrame = 1920; // Opus' accepted sample size for 48khz
 const mixxx::Logger kLogger("EncoderOpus");
 }
@@ -15,9 +27,12 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_channels(0),
       m_samplerate(0),
       m_pCallback(pCallback),
-      m_pOpus(nullptr),
       m_pFrameBuffer(nullptr),
-      m_header_write(false) {
+      m_pOpus(nullptr),
+      m_header_write(false),
+      m_packetNumber(0),
+      m_granulePos(0) {
+    ogg_stream_init(&m_oggStream, getSerial());
 }
 
 EncoderOpus::~EncoderOpus() {
@@ -28,6 +43,8 @@ EncoderOpus::~EncoderOpus() {
     if(m_pFrameBuffer) {
         free(m_pFrameBuffer);
     }
+
+    ogg_stream_clear(&m_oggStream);
 }
 
 void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
@@ -64,6 +81,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     // Four times the required sample count to give enough room for buffering
     m_pFrameBuffer = new FIFO<CSAMPLE>(m_channels * kChannelSamplesPerFrame * 4);
 
+    initStream();
     return 0;
 }
 
@@ -88,21 +106,103 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         int maxSize = 1+1275;
         unsigned char* tmpPacket = (unsigned char*)malloc(maxSize);
 
-        int result = opus_encode_float(m_pOpus, dataPtr, readRequired / m_channels, tmpPacket, maxSize);
+        int samplesPerChannel = readRequired / m_channels;
+        int result = opus_encode_float(m_pOpus, dataPtr, samplesPerChannel, tmpPacket, maxSize);
         free(dataPtr);
 
         if(result < 1) {
             kLogger.warning() << "opus_encode_float failed:" << opusErrorString(result);
-            free((unsigned char*)tmpPacket);
+            free(tmpPacket);
             return;
         }
 
-        unsigned char* packet = (unsigned char*)malloc(result);
-        memcpy(packet, tmpPacket, result);
+        unsigned char* packetData = (unsigned char*)malloc(result);
+        memcpy(packetData, tmpPacket, result);
         free(tmpPacket);
 
-        // TODO: Mux Opus datastream into an Ogg bitstream
-        m_pCallback->write(nullptr, packet, 0, result);
+        ogg_packet packet;
+        packet.b_o_s = 0;
+        packet.e_o_s = 0;
+        packet.granulepos = m_granulePos;
+        packet.packetno = m_packetNumber;
+        packet.packet = packetData;
+        packet.bytes = result;
+
+        m_granulePos += samplesPerChannel;
+        m_packetNumber += 1;
+
+        pushPacketToStream(&packet);
+        free(packetData);
+    }
+}
+
+void EncoderOpus::initStream() {
+    // Based on BUTT's Opus encoder implementation
+    ogg_packet packet;
+    ogg_stream_clear(&m_oggStream);
+    ogg_stream_init(&m_oggStream, getSerial());
+    m_granulePos = 0;
+    m_packetNumber = 0;
+
+    // Push Opus header
+    packet.b_o_s = 1;
+    packet.e_o_s = 0;
+    packet.granulepos = 0;
+    packet.packetno = m_packetNumber++;
+    packet.packet = nullptr;
+    packet.bytes = 0;
+
+    ogg_stream_packetin(&m_oggStream, &packet);
+
+    /*
+    // Push tags
+    packet.b_o_s = 0;
+    packet.e_o_s = 0;
+    packet.granulepos = 0;
+    packet.packetno = m_packetNumber++;
+    packet.packet = nullptr;
+    packet.bytes = 0;
+
+    ogg_stream_packetin(&m_oggStream, &packet);
+    */
+}
+
+void EncoderOpus::pushPacketToStream(ogg_packet* pPacket) {
+    if(!pPacket) {
+        return;
+    }
+
+    // Write initial stream header if not already done
+    int result;
+    if(m_header_write) {
+        while (true) {
+            result = ogg_stream_flush(&m_oggStream, &m_oggPage);
+            if (result == 0)
+                break;
+
+            m_pCallback->write(m_oggPage.header, m_oggPage.body,
+                               m_oggPage.header_len, m_oggPage.body_len);
+        }
+        m_header_write = false;
+    }
+
+    // Push Opus Ogg packets to the stream
+    ogg_stream_packetin(&m_oggStream, pPacket);
+
+    // Try to send available Ogg pages to the output
+    bool eos = false;
+    while (!eos) {
+        int result = ogg_stream_pageout(&m_oggStream, &m_oggPage);
+        if (result == 0) {
+            break;
+        }
+
+        m_pCallback->write(m_oggPage.header, m_oggPage.body,
+                           m_oggPage.header_len, m_oggPage.body_len);
+
+        if (ogg_page_eos(&m_oggPage)) {
+            eos = true;
+        }
     }
 }
 
@@ -134,5 +234,16 @@ QString EncoderOpus::opusErrorString(int error) {
         default:
             return "Unknown error";
     }
+}
+
+int EncoderOpus::getSerial()
+{
+    static int prevSerial = 0;
+    int serial = rand();
+    while (prevSerial == serial)
+        serial = rand();
+    prevSerial = serial;
+    kLogger.debug() << "RETURNING SERIAL " << serial;
+    return serial;
 }
 
