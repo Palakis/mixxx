@@ -73,8 +73,8 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     opus_encoder_ctl(m_pOpus, OPUS_SET_COMPLEXITY(10));
     opus_encoder_ctl(m_pOpus, OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
 
-    // Four times the required sample count to give enough room for buffering
-    m_pFrameBuffer = new FIFO<CSAMPLE>(m_channels * kChannelSamplesPerFrame * 4);
+    // TODO(Palakis): use constant or have the engine provide that value
+    m_pFrameBuffer = new FIFO<CSAMPLE>(57344 * 2);
 
     initStream();
     return 0;
