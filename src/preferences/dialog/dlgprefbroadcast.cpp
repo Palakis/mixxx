@@ -94,6 +94,7 @@ DlgPrefBroadcast::DlgPrefBroadcast(QWidget *parent,
      // Encoding format combobox
      comboBoxEncodingFormat->addItem(tr("MP3"), BROADCAST_FORMAT_MP3);
      comboBoxEncodingFormat->addItem(tr("Ogg Vorbis"), BROADCAST_FORMAT_OV);
+     comboBoxEncodingFormat->addItem(tr("Opus"), BROADCAST_FORMAT_OPUS);
 
      // Encoding channels combobox
      comboBoxEncodingChannels->addItem(tr("Automatic"),
