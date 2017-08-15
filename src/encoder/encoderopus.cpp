@@ -221,7 +221,6 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 
     int writeCount = math_min(writeRequired, writeAvailable);
     if(writeCount > 0) {
-        kLogger.debug() << "writing" << writeCount << "samples to FIFO buffer";
         m_pFrameBuffer->write(samples, writeCount);
     }
 
@@ -252,11 +251,6 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 
         m_granulePos += samplesPerChannel;
         m_packetNumber += 1;
-
-        kLogger.debug() << "new packet"
-                        << "; granulepos:" << packet.granulepos
-                        << "; packetno:" << packet.packetno
-                        << "; bytes:" << packet.bytes;
 
         writePage(&packet);
         free(packetData);
