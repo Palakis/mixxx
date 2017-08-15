@@ -1324,3 +1324,4 @@ class QtKeychain(Feature):
 
     def depends(self, build):
         return [depends.QtKeychain]
+

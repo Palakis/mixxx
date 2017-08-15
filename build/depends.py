@@ -639,6 +639,13 @@ class QtKeychain(Dependence):
             raise Exception(
                 "Could not find qtkeychain.")
 
+# TODO(Palakis): remove this in the final version
+class FdkAac(Dependence):
+    def configure(self, build, conf):
+        libs = ['fdk-aac']
+        if not conf.CheckLib(libs):
+            raise Exception('Could not find fdk-aac.')
+
 class MixxxCore(Feature):
 
     def description(self):
@@ -1097,10 +1104,12 @@ class MixxxCore(Feature):
                    "encoder/encodervorbis.cpp",
                    "encoder/encoderwave.cpp",
                    "encoder/encodersndfileflac.cpp",
+                   "encoder/encoderfdkaac.cpp",
                    "encoder/encodermp3settings.cpp",
                    "encoder/encodervorbissettings.cpp",
                    "encoder/encoderwavesettings.cpp",
                    "encoder/encoderflacsettings.cpp",
+                   "encoder/encoderfdkaacsettings.cpp",
                    "encoder/encoderbroadcastsettings.cpp",
 
                    "util/sleepableqthread.cpp",
@@ -1423,7 +1432,7 @@ class MixxxCore(Feature):
         return [SoundTouch, ReplayGain, Ebur128Mit, PortAudio, PortMIDI, Qt, TestHeaders,
                 FidLib, SndFile, FLAC, OggVorbis, OpenGL, TagLib, ProtoBuf,
                 Chromaprint, RubberBand, SecurityFramework, CoreServices, IOKit,
-                QtScriptByteArray, Reverb, FpClassify, PortAudioRingBuffer]
+                QtScriptByteArray, Reverb, FpClassify, PortAudioRingBuffer, FdkAac]
 
     def post_dependency_check_configure(self, build, conf):
         """Sets up additional things in the Environment that must happen

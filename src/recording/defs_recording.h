@@ -7,6 +7,8 @@
 #define ENCODING_AIFF "AIFF"
 #define ENCODING_OGG  "OGG"
 #define ENCODING_MP3 "MP3"
+#define ENCODING_AAC "AAC"
+#define ENCODING_AACPLUS "AACplus"
 
 #define RECORD_OFF 0.0
 #define RECORD_READY 1.0

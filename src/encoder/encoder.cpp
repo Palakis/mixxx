@@ -27,6 +27,9 @@
 #include "encoder/encoderwavesettings.h"
 #include "encoder/encoderflacsettings.h"
 
+#include "encoder/encoderfdkaac.h"
+#include "encoder/encoderfdkaacsettings.h"
+
 #include <QList>
 
 EncoderFactory EncoderFactory::factory;
@@ -43,6 +46,8 @@ EncoderFactory::EncoderFactory() {
     m_formats.append(Encoder::Format("FLAC", ENCODING_FLAC, true));
     m_formats.append(Encoder::Format("MP3",ENCODING_MP3, false));
     m_formats.append(Encoder::Format("OGG Vorbis",ENCODING_OGG, false));
+    m_formats.append(Encoder::Format("AAC",ENCODING_AAC, false));
+    m_formats.append(Encoder::Format("AAC+",ENCODING_AACPLUS, false));
 }
 
 const QList<Encoder::Format> EncoderFactory::getFormats() const
@@ -99,6 +104,12 @@ EncoderPointer EncoderFactory::getNewEncoder(Encoder::Format format,
         pEncoder = std::make_shared<EncoderVorbis>(pCallback);
         #endif
         pEncoder->setEncoderSettings(EncoderVorbisSettings(pConfig));
+    } else if (format.internalName == ENCODING_AAC) {
+        pEncoder = std::make_shared<EncoderFdkAac>(pCallback, ENCODING_AAC);
+        pEncoder->setEncoderSettings(EncoderFdkAacSettings(pConfig));
+    } else if (format.internalName == ENCODING_AACPLUS) {
+        pEncoder = std::make_shared<EncoderFdkAac>(pCallback, ENCODING_AACPLUS);
+        pEncoder->setEncoderSettings(EncoderFdkAacSettings(pConfig));
     } else {
         qWarning() << "Unsuported format requested! " << format.internalName;
         DEBUG_ASSERT(false);
