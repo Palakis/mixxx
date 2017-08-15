@@ -25,6 +25,7 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_header_write(false),
       m_packetNumber(0),
       m_granulePos(0) {
+    m_opusComments.value("ENCODER", "mixxx/libopus");
     m_pOpusBuffer = (unsigned char*)malloc(kMaxOpusBufferSize);
     ogg_stream_init(&m_oggStream, rand());
 }
@@ -119,59 +120,61 @@ void EncoderOpus::initStream() {
     free(tagsData);
 }
 
+// TODO(Palakis): easier and cleaner binary manipulations
 unsigned char* EncoderOpus::createOpusHeader(int* size) {
     unsigned char* data = (unsigned char*)malloc(1024);
     memset(data, 0, *size);
-    int i = 0; // Current position
+    int pos = 0; // Current position
 
     // Opus identification header
     // Format from https://tools.ietf.org/html/rfc7845.html#section-5.1
 
     // Magic signature (8 bytes)
     memcpy(data + 0, "OpusHead", 8);
-    i += 8;
+    pos += 8;
 
     // Version number (1 byte, fixed to 1)
-    data[i++] = 0x01;
+    data[pos++] = 0x01;
 
     // Channel count (1 byte)
-    data[i++] = (char)m_channels;
+    data[pos++] = (char)m_channels;
 
     // Pre-skip (2 bytes, little-endian)
     int preskip = 0;
     opus_encoder_ctl(m_pOpus, OPUS_GET_LOOKAHEAD(&preskip));
     for(int x = 0; x < 2; x++) {
-        data[i++] = (preskip >> (x*8)) & 0xFF;
+        data[pos++] = (preskip >> (x*8)) & 0xFF;
     }
 
     // Sample rate (4 bytes, little endian)
     for(int x = 0; x < 4; x++) {
-        data[i++] = (m_samplerate >> (x*8)) & 0xFF;
+        data[pos++] = (m_samplerate >> (x*8)) & 0xFF;
     }
 
     // Output gain (2 bytes, little-endian, fixed to 0)
-    data[i++] = 0;
-    data[i++] = 0;
+    data[pos++] = 0;
+    data[pos++] = 0;
 
     // Channel mapping (1 byte, fixed to 0, means one stream)
-    data[i++] = 0;
+    data[pos++] = 0;
 
     // Ignore channel mapping table
-    *size = i;
+    *size = pos;
     return data;
 }
 
+// TODO(Palakis): easier and cleaner binary manipulations
 unsigned char* EncoderOpus::createOpusTags(int* size) {
     unsigned char* data = (unsigned char*)malloc(1024);
     memset(data, 0, *size);
-    int i = 0; // Current position
+    int pos = 0; // Current position
 
     // Opus comment header
     // Format from https://tools.ietf.org/html/rfc7845.html#section-5.2
 
     // Magic signature (8 bytes)
     memcpy(data + 0, "OpusTags", 8);
-    i += 8;
+    pos += 8;
 
     // Vendor string (mandatory)
     // length field (4 bytes, little-endian) + actual string
@@ -179,28 +182,37 @@ unsigned char* EncoderOpus::createOpusTags(int* size) {
     int versionLength = strlen(version);
     // Write length field
     for(int x = 0; x < 4; x++) {
-        data[i++] = (versionLength >> (x*8)) & 0xFF;
+        data[pos++] = (versionLength >> (x*8)) & 0xFF;
     }
     // Write string
-    memcpy(data + i, version, versionLength);
-    i += versionLength;
+    memcpy(data + pos, version, versionLength);
+    pos += versionLength;
 
     // Number of comments
-    data[i++] = 1;
+    int comments = m_opusComments.size();
+    data[pos++] = comments;
 
-    // First and only comment: encoder info
-    // length field (4 bytes, little-endian) + actual string
-    const char* encoderInfo = "ENCODER=mixxx/libopus";
-    int infoLength = strlen(encoderInfo);
-    // Write length field
-    for(int x = 0; x < 4; x++) {
-        data[i++] = (infoLength >> (x*8)) & 0xFF;
+    // Comments
+    // each comment is a string length field (4 bytes, little-endian)
+    // and the actual string data
+    for(auto pair : m_opusComments.toStdMap()) {
+        QString key = pair.first;
+        QString value = pair.second;
+        QString comment = key + "=" + value;
+
+        const char* commentData = comment.toUtf8().constData();
+        int commentLength = strlen(commentData);
+
+        // Write length field
+        for(int x = 0; x < 4; x++) {
+            data[pos++] = (commentLength >> (x*8)) & 0xFF;
+        }
+        // Write string
+        memcpy(data + pos, commentData, commentLength);
+        pos += commentLength;
     }
-    // Write string
-    memcpy(data + i, encoderInfo, infoLength);
-    i += infoLength;
 
-    *size = i;
+    *size = pos;
     return data;
 }
 

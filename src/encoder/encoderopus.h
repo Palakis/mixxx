@@ -4,6 +4,7 @@
 #ifndef ENCODER_ENCODEROPUS_H
 #define ENCODER_ENCODEROPUS_H
 
+#include <QMap>
 #include <QString>
 
 #include <ogg/ogg.h>
@@ -45,6 +46,7 @@ class EncoderOpus: public Encoder {
     bool m_header_write;
     int m_packetNumber;
     ogg_int64_t m_granulePos;
+    QMap<QString, QString> m_opusComments;
 };
 
 #endif // ENCODER_ENCODEROPUS_H
