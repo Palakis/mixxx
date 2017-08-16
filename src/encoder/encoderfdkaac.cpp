@@ -27,9 +27,11 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
       m_aacInfo() {
 
     if (strcmp(pFormat, ENCODING_AAC) == 0) {
+        // MPEG-4 AAC-LC
         m_aacAot = AOT_AAC_LC;
     }
     else if (strcmp(pFormat, ENCODING_HEAAC) == 0) {
+        // MPEG-4 HE-AAC
         m_aacAot = AOT_SBR;
     }
 
@@ -111,12 +113,23 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
     (void)errorMessage;
     m_samplerate = samplerate;
 
+    // This initializes the encoder handle but not the encoder itself.
+    // Actual encoder init is done below.
     aacEncOpen(&m_aacEnc, 0, m_channels);
+
+    // AAC Object Type: specifies "mode": AAC-LC, HE-AAC, HE-AACv2, DAB AAC, etc...
     aacEncoder_SetParam(m_aacEnc, AACENC_AOT, m_aacAot);
+
+    // Input audio samplerate
     aacEncoder_SetParam(m_aacEnc, AACENC_SAMPLERATE, m_samplerate);
+    // Input and output audio channel count
     aacEncoder_SetParam(m_aacEnc, AACENC_CHANNELMODE, m_channels);
+    // Input audio channel order (fixed to 1 for traditional WAVE ordering: L, R, ...)
     aacEncoder_SetParam(m_aacEnc, AACENC_CHANNELORDER, 1);
+
+    // Output bitrate in bytes per seconds
     aacEncoder_SetParam(m_aacEnc, AACENC_BITRATE, m_bitrate * 1000);
+    // Transport type (2 = ADTS)
     aacEncoder_SetParam(m_aacEnc, AACENC_TRANSMUX, 2);
 
     // Actual encoder init, validates settings provided above
