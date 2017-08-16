@@ -80,7 +80,7 @@ class EncoderFdkAac: public Encoder {
 
     typedef enum {
         IN_AUDIO_DATA = 0,
-        IN_ANCILLRY_DATA = 1,
+        IN_ANCILLRY_DATA = 1, // as is in fdk-aac
         IN_METADATA_SETUP = 2,
         OUT_BITSTREAM_DATA = 3,
         OUT_AU_SIZES = 4

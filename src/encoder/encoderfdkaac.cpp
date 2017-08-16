@@ -50,6 +50,7 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
 #elif __WINDOWS__
     libnames << "libfdkaac.dll";
     libnames << "libfdk-aac.dll";
+    libnames << "libfdk-aac-1.dll";
 #elif __APPLE__
     // TODO(Palakis): double-check macOS paths
     libnames << "/usr/local/lib/libfdk-aac.dylib";
@@ -154,7 +155,7 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
 
     aacEncInfo(m_aacEnc, &m_aacInfo);
     // TODO(Palakis): use constant or get value from engine
-    m_pInputBuffer = new FIFO<CSAMPLE>(60000 * 2);
+    m_pInputBuffer = new FIFO<CSAMPLE>(57344 * 2);
     return 0;
 }
 
