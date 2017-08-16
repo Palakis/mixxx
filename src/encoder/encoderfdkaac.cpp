@@ -4,6 +4,7 @@
 #include <QString>
 #include <QStringList>
 
+#include "recording/defs_recording.h"
 #include "util/logger.h"
 #include "util/sample.h"
 
@@ -24,6 +25,13 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
       m_library(nullptr) ,
       m_aacEnc(),
       m_aacInfo() {
+
+    if (strcmp(pFormat, ENCODING_AAC) == 0) {
+        m_aacAot = AOT_AAC_LC;
+    }
+    else if (strcmp(pFormat, ENCODING_HEAAC) == 0) {
+        m_aacAot = AOT_SBR;
+    }
 
     // Load shared library
     // Code import from encodermp3.cpp
@@ -134,7 +142,7 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
     int inDataDescription = IN_AUDIO_DATA;
 
     int outElemSize = sizeof(unsigned char);
-    int outDataSize = kOutBufferBits * outElemSize;
+    int outDataSize = kOutBufferBits * m_channels * outElemSize;
     unsigned char* outData = (unsigned char*)malloc(outDataSize);
     int outDataDescription = OUT_BITSTREAM_DATA;
 
