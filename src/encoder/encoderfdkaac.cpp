@@ -217,7 +217,15 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
         return;
     }
 
-    int writeCount = math_min(sampleCount, m_pInputBuffer->writeAvailable());
+    int writeRequired = sampleCount;
+    int writeAvailable = m_pInputBuffer->writeAvailable();
+    if (writeRequired > writeAvailable) {
+        kLogger.warning() << "FIFO buffer too small, loosing samples!"
+                          << "required:" << writeRequired
+                          << "; available: " << writeAvailable;
+    }
+
+    int writeCount = math_min(writeRequired, writeAvailable);
     if (writeCount > 0) {
         m_pInputBuffer->write(samples, sampleCount);
     }
