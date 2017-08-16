@@ -182,7 +182,7 @@ QString EncoderFdkAac::buttWindowsFdkAac() {
         }
 
         // List subfolders
-        QStringList nameFilters("butt-*");
+        QStringList nameFilters("butt*");
         QStringList subfolders =
                 folder.entryList(nameFilters, QDir::Dirs, QDir::Name);
 
