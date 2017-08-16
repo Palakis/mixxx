@@ -31,11 +31,11 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
 }
 
 EncoderOpus::~EncoderOpus() {
-    if(m_pOpus) {
+    if (m_pOpus) {
         opus_encoder_destroy(m_pOpus);
     }
 
-    if(m_pFrameBuffer) {
+    if (m_pFrameBuffer) {
         free(m_pFrameBuffer);
     }
 
@@ -44,8 +44,9 @@ EncoderOpus::~EncoderOpus() {
 }
 
 void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
+    // TODO(Palakis): support VBR
     m_bitrate = settings.getQuality();
-    switch(settings.getChannelMode()) {
+    switch (settings.getChannelMode()) {
         case EncoderSettings::ChannelMode::MONO:
             m_channels = 1;
             break;
@@ -65,7 +66,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     m_samplerate = samplerate;
     m_pOpus = opus_encoder_create(m_samplerate, m_channels, OPUS_APPLICATION_AUDIO, &result);
 
-    if(result != OPUS_OK) {
+    if (result != OPUS_OK) {
         kLogger.warning() << "opus_encoder_create failed:" << opusErrorString(result);
         return -1;
     }
@@ -142,12 +143,12 @@ unsigned char* EncoderOpus::createOpusHeader(int* size) {
     // Pre-skip (2 bytes, little-endian)
     int preskip = 0;
     opus_encoder_ctl(m_pOpus, OPUS_GET_LOOKAHEAD(&preskip));
-    for(int x = 0; x < 2; x++) {
+    for (int x = 0; x < 2; x++) {
         data[pos++] = (preskip >> (x*8)) & 0xFF;
     }
 
     // Sample rate (4 bytes, little endian)
-    for(int x = 0; x < 4; x++) {
+    for (int x = 0; x < 4; x++) {
         data[pos++] = (m_samplerate >> (x*8)) & 0xFF;
     }
 
@@ -181,7 +182,7 @@ unsigned char* EncoderOpus::createOpusTags(int* size) {
     const char* version = opus_get_version_string();
     int versionLength = strlen(version);
     // Write length field
-    for(int x = 0; x < 4; x++) {
+    for (int x = 0; x < 4; x++) {
         data[pos++] = (versionLength >> (x*8)) & 0xFF;
     }
     // Write string
@@ -190,14 +191,14 @@ unsigned char* EncoderOpus::createOpusTags(int* size) {
 
     // Number of comments (4 bytes, little-endian)
     int comments = m_opusComments.size();
-    for(int x = 0; x < 4; x++) {
+    for (int x = 0; x < 4; x++) {
         data[pos++] = (comments >> (x*8)) & 0xFF;
     }
 
     // Comments
     // each comment is a string length field (4 bytes, little-endian)
     // and the actual string data
-    for(auto pair : m_opusComments.toStdMap()) {
+    for (auto pair : m_opusComments.toStdMap()) {
         QString key = pair.first;
         QString value = pair.second;
         QString comment = key + "=" + value;
@@ -219,25 +220,29 @@ unsigned char* EncoderOpus::createOpusTags(int* size) {
 }
 
 void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
-    if(!m_pOpus) {
+    if (!m_pOpus) {
         return;
     }
 
     int writeRequired = size;
     int writeAvailable = m_pFrameBuffer->writeAvailable();
-    if(writeRequired > writeAvailable) {
+    if (writeRequired > writeAvailable) {
         kLogger.warning() << "FIFO buffer too small, loosing samples!"
                           << "required:" << writeRequired
                           << "; available: " << writeAvailable;
     }
 
     int writeCount = math_min(writeRequired, writeAvailable);
-    if(writeCount > 0) {
+    if (writeCount > 0) {
         m_pFrameBuffer->write(samples, writeCount);
     }
 
+    processFIFO();
+}
+
+void EncoderOpus::processFIFO() {
     int readRequired = kChannelSamplesPerFrame * 2;
-    while(m_pFrameBuffer->readAvailable() >= readRequired) {
+    while (m_pFrameBuffer->readAvailable() >= readRequired) {
         CSAMPLE* dataPtr = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
         m_pFrameBuffer->read(dataPtr, readRequired);
 
@@ -245,7 +250,7 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
         int result = opus_encode_float(m_pOpus, dataPtr, samplesPerChannel, m_pOpusBuffer, kMaxOpusBufferSize);
         free(dataPtr);
 
-        if(result < 1) {
+        if (result < 1) {
             kLogger.warning() << "opus_encode_float failed:" << opusErrorString(result);
             return;
         }
@@ -270,13 +275,13 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 }
 
 void EncoderOpus::writePage(ogg_packet* pPacket) {
-    if(!pPacket) {
+    if (!pPacket) {
         return;
     }
 
     // Push headers prepared by initStream if not already done
     int result;
-    if(m_header_write) {
+    if (m_header_write) {
         while (true) {
             result = ogg_stream_flush(&m_oggStream, &m_oggPage);
             if (result == 0)
@@ -314,10 +319,12 @@ void EncoderOpus::updateMetaData(const QString& artist, const QString& title, co
 }
 
 void EncoderOpus::flush() {
+    // At this point there may still be samples in the FIFO buffer
+    processFIFO();
 }
 
 QString EncoderOpus::opusErrorString(int error) {
-    switch(error) {
+    switch (error) {
         case OPUS_OK:
             return "OPUS_OK";
         case OPUS_BAD_ARG:
@@ -339,8 +346,7 @@ QString EncoderOpus::opusErrorString(int error) {
     }
 }
 
-int EncoderOpus::getSerial()
-{
+int EncoderOpus::getSerial() {
     static int prevSerial = 0;
     int serial = rand();
     while (prevSerial == serial)

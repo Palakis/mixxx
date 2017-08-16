@@ -33,6 +33,7 @@ class EncoderOpus: public Encoder {
     unsigned char* createOpusTags(int* size);
     void initStream();
     void writePage(ogg_packet* pPacket);
+    void processFIFO();
 
     int m_bitrate;
     int m_channels;
