@@ -1,6 +1,8 @@
 // encoderfdkaac.cpp
 // Created on Aug 15 2017 by Palakis
 
+#include <QDesktopServices>
+#include <QDir>
 #include <QString>
 #include <QStringList>
 
@@ -51,6 +53,11 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
     libnames << "libfdkaac.dll";
     libnames << "libfdk-aac.dll";
     libnames << "libfdk-aac-1.dll";
+
+    QString buttFdkAacPath = buttWindowsFdkAac();
+    if(!buttPath.isNull()) {
+        libnames << buttFdkAacPath;
+    }
 #elif __APPLE__
     // Using Homebrew ('brew install fdk-aac' command):
     libnames << "/usr/local/lib/libfdk-aac.dylib";
@@ -151,6 +158,50 @@ EncoderFdkAac::~EncoderFdkAac() {
     if (m_pInputBuffer) {
         delete m_pInputBuffer;
     }
+}
+
+// TODO(Palakis): test this on Windows
+QString EncoderFdkAac::buttWindowsFdkAac() {
+    // Candidate paths for a butt installation
+    QStringList searchPaths;
+    searchPaths << "C:\\Program Files";
+    searchPaths << "C:\\Program Files (x86)";
+    // AppData
+    searchPaths << QDesktopServices::storageLocation(
+            QDesktopServices::DataLocation);
+
+    // Try to find a butt installation in one of the
+    // potential paths above
+    for (QString candidate : searchPaths) {
+        QDir folder(candidate);
+        if(!folder.exists()) {
+            continue;
+        }
+
+        // List subfolders
+        QStringList nameFilters("butt-*");
+        QStringList subfolders =
+                folder.entryList(nameFilters, QDir::Dirs, QDir::Name);
+
+        // If a butt installation is found, try
+        // to find libfdk-aac in it
+        for (QString subName : subfolders) {
+            if(!folder.cd(subName)) {
+                continue;
+            }
+
+            QString libFile = "libfdk-aac-1.dll";
+            if(!folder.exists(libFile)) {
+                // Found a libfdk-aac here.
+                // Return the full path of the .dll file.
+                return folder.absoluteFilePath(libFile);
+            }
+
+            folder.cdUp();
+        }
+    }
+
+    return QString::null;
 }
 
 void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {

@@ -21,6 +21,8 @@ class EncoderFdkAac: public Encoder {
     void setEncoderSettings(const EncoderSettings& settings) override;
 
   private:
+    QString buttWindowsFdkAac();
+
     // libfdk-aac common AOTs
     static const int AOT_AAC_LC = 2; // AAC-LC
     static const int AOT_SBR = 5; // HE-AAC
