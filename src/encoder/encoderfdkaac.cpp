@@ -95,16 +95,62 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
         return;
     }
 
+    aacEncGetLibInfo = (aacEncGetLibInfo_)m_library->resolve("aacEncGetLibInfo");
     aacEncOpen = (aacEncOpen_)m_library->resolve("aacEncOpen");
     aacEncClose = (aacEncClose_)m_library->resolve("aacEncClose");
     aacEncEncode = (aacEncEncode_)m_library->resolve("aacEncEncode");
     aacEncInfo = (aacEncInfo_)m_library->resolve("aacEncInfo");
     aacEncoder_SetParam = (aacEncoder_SetParam_)m_library->resolve("aacEncoder_SetParam");
+
+    // Check if all function pointers aren't null.
+    // Otherwise, the version of libfdk-aac loaded doesn't comply with the official distribution
+    // Shouldn't happen on Linux, mainly on Windows.
+    if(!aacEncGetLibInfo ||
+       !aacEncOpen ||
+       !aacEncClose ||
+       !aacEncEncode ||
+       !aacEncInfo ||
+       !aacEncoder_SetParam)
+    {
+        m_library->unload();
+        delete m_library;
+        m_library = nullptr;
+
+        kLogger.debug() << "aacEncGetLibInfo:" << aacEncGetLibInfo;
+        kLogger.debug() << "aacEncOpen:" << aacEncOpen;
+        kLogger.debug() << "aacEncClose:" << aacEncClose;
+        kLogger.debug() << "aacEncEncode:" << aacEncEncode;
+        kLogger.debug() << "aacEncInfo:" << aacEncInfo;
+        kLogger.debug() << "aacEncoder_SetParam:" << aacEncoder_SetParam;
+
+        ErrorDialogProperties* props = ErrorDialogHandler::instance()->newDialogProperties();
+        props->setType(DLG_WARNING);
+        props->setTitle(QObject::tr("Encoder"));
+        QString key = QObject::tr(
+                "<html>Mixxx has detected that you use a modified version of libfdk-aac. "
+                "See <a href='http://mixxx.org/wiki/doku.php/internet_broadcasting'>Mixxx Wiki</a> "
+                "for more information.</html>");
+        props->setText(key);
+        props->setKey(key);
+        ErrorDialogHandler::instance()->requestErrorDialog(props);
+        return;
+    }
+
+    kLogger.debug() << "Loaded libfdk-aac";
 }
 
 EncoderFdkAac::~EncoderFdkAac() {
     aacEncClose(&m_aacEnc);
-    delete m_pInputBuffer;
+    if (m_library && m_library->isLoaded()) {
+        flush();
+        m_library->unload();
+        delete m_library;
+        kLogger.debug() << "Unloaded libfdk-aac";
+    }
+
+    if (m_pInputBuffer) {
+        delete m_pInputBuffer;
+    }
 }
 
 void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
@@ -126,6 +172,11 @@ void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
 int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
     (void)errorMessage;
     m_samplerate = samplerate;
+
+    if(!m_library) {
+        kLogger.warning() << "initEncoder failed: fdk-aac library not loaded";
+        return -1;
+    }
 
     // This initializes the encoder handle but not the encoder itself.
     // Actual encoder init is done below.

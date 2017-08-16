@@ -86,6 +86,43 @@ class EncoderFdkAac: public Encoder {
         OUT_AU_SIZES = 4
     } AACENC_BufferIdentifier;
 
+    typedef enum {
+        FDK_NONE = 0,
+        FDK_TOOLS = 1,
+        FDK_SYSLIB = 2,
+        FDK_AACDEC = 3,
+        FDK_AACENC = 4,
+        FDK_SBRDEC = 5,
+        FDK_SBRENC = 6,
+        FDK_TPDEC = 7,
+        FDK_TPENC = 8,
+        FDK_MPSDEC = 9,
+        FDK_MPEGFILEREAD = 10,
+        FDK_MPEGFILEWRITE = 11,
+        FDK_MP2DEC = 12,
+        FDK_DABDEC = 13,
+        FDK_DABPARSE = 14,
+        FDK_DRMDEC = 15,
+        FDK_DRMPARSE = 16,
+        FDK_AACLDENC = 17,
+        FDK_MP2ENC = 18,
+        FDK_MP3ENC = 19,
+        FDK_MP3DEC = 20,
+        FDK_MP3HEADPHONE = 21,
+        FDK_MP3SDEC = 22,
+        FDK_MP3SENC = 23,
+        FDK_EAEC = 24,
+        FDK_DABENC = 25,
+        FDK_DMBDEC = 26,
+        FDK_FDREVERB = 27,
+        FDK_DRMENC = 28,
+        FDK_METADATATRANSCODER = 29,
+        FDK_AC3DEC = 30,
+        FDK_PCMDMX = 31,
+
+        FDK_MODULE_LAST
+    } FDK_MODULE_ID;
+
     typedef struct AACENCODER *HANDLE_AACENCODER;
     typedef struct {
         UINT maxOutBufBytes;
@@ -113,8 +150,19 @@ class EncoderFdkAac: public Encoder {
         INT numInSamples;
         INT numAncBytes;
     } AACENC_OutArgs;
+    typedef struct {
+        const char* title;
+        const char* build_date;
+        const char* build_time;
+        FDK_MODULE_ID module_id;
+        INT version;
+        UINT flags;
+        char versionStr[32];
+    } LIB_INFO;
 
     // libfdk-aac functions prototypes
+    typedef AACENC_ERROR (*aacEncGetLibInfo_)(LIB_INFO*);
+
     typedef AACENC_ERROR (*aacEncOpen_)(
             HANDLE_AACENCODER*,
             const UINT,
@@ -139,6 +187,7 @@ class EncoderFdkAac: public Encoder {
             const UINT);
 
     // libfdk-aac function pointers
+    aacEncGetLibInfo_ aacEncGetLibInfo;
     aacEncOpen_ aacEncOpen;
     aacEncClose_ aacEncClose;
     aacEncEncode_ aacEncEncode;
