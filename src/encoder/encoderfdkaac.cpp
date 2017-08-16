@@ -5,19 +5,25 @@
 #include <QStringList>
 
 #include "util/logger.h"
+#include "util/sample.h"
 
 #include "encoder/encoderfdkaac.h"
 
 namespace {
+// recommended in encoder documentation, section 2.4.1
+const int kOutBufferBits = 6144;
 const mixxx::Logger kLogger("EncoderFdkAac");
 }
 
 EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
-    : m_pFormat(pFormat),
+    : m_aacAot(0),
       m_bitrate(0),
       m_channels(0),
       m_samplerate(0),
-      m_pCallback(pCallback) {
+      m_pCallback(pCallback),
+      m_library(nullptr) ,
+      m_aacEnc(),
+      m_aacInfo() {
 
     // Load shared library
     // Code import from encodermp3.cpp
@@ -29,6 +35,7 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
     libnames << "libfdkaac.dll";
     libnames << "libfdk-aac.dll";
 #elif __APPLE__
+    // TODO(Palakis): double-check macOS paths
     libnames << "/usr/local/lib/libfdk-aac.dylib";
     //Using MacPorts (former DarwinPorts) results in ...
     libnames << "/opt/local/lib/libfdk-aac.dylib";
@@ -73,6 +80,7 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
 }
 
 EncoderFdkAac::~EncoderFdkAac() {
+    aacEncClose(&m_aacEnc);
 }
 
 void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
@@ -92,18 +100,85 @@ void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
 }
 
 int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
+    (void)errorMessage;
     m_samplerate = samplerate;
-    return -1;
+
+    aacEncOpen(&m_aacEnc, 0, m_channels);
+    aacEncoder_SetParam(m_aacEnc, AACENC_AOT, m_aacAot);
+    aacEncoder_SetParam(m_aacEnc, AACENC_SAMPLERATE, m_samplerate);
+    aacEncoder_SetParam(m_aacEnc, AACENC_CHANNELMODE, m_channels);
+    aacEncoder_SetParam(m_aacEnc, AACENC_CHANNELORDER, 1);
+    aacEncoder_SetParam(m_aacEnc, AACENC_BITRATE, m_bitrate * 1000);
+    aacEncoder_SetParam(m_aacEnc, AACENC_TRANSMUX, 2);
+
+    // Actual encoder init, validates settings provided above
+    int result = aacEncEncode(m_aacEnc, nullptr, nullptr, nullptr, nullptr);
+    if(result != AACENC_OK) {
+        kLogger.warning() << "aac encoder init failed! error code:" << result;
+        return -1;
+    }
+
+    aacEncInfo(m_aacEnc, &m_aacInfo);
+    return 0;
 }
 
-void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int size) {
+void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) {
+    // fdk-aac only accept pointers for most buffer settings.
+    // Declare settings here and point to them below.
+    int inSampleSize = sizeof(SAMPLE);
+    int inDataSize = sampleCount * inSampleSize;
+    SAMPLE* inData = (SAMPLE*)malloc(inDataSize);
+    // fdk-aac doesn't support float samples, so convert
+    // to integers instead
+    SampleUtil::convertFloat32ToS16(inData, samples, sampleCount);
+    int inDataDescription = IN_AUDIO_DATA;
 
+    int outElemSize = sizeof(unsigned char);
+    int outDataSize = kOutBufferBits * outElemSize;
+    unsigned char* outData = (unsigned char*)malloc(outDataSize);
+    int outDataDescription = OUT_BITSTREAM_DATA;
+
+    // === Input Buffer ===
+    AACENC_BufDesc inputBuf;
+    inputBuf.numBufs = 1;
+    inputBuf.bufs = (void**)&inData;
+    inputBuf.bufSizes = &inDataSize;
+    inputBuf.bufElSizes = &inSampleSize;
+    inputBuf.bufferIdentifiers = &inDataDescription;
+
+    AACENC_InArgs inputDesc;
+    inputDesc.numInSamples = sampleCount;
+    inputDesc.numAncBytes = 0;
+    // ======
+
+    // === Output (result) Buffer ===
+    AACENC_BufDesc outputBuf;
+    outputBuf.numBufs = 1;
+    outputBuf.bufs = (void**)&outData;
+    outputBuf.bufSizes = &outDataSize;
+    outputBuf.bufElSizes = &outElemSize;
+    outputBuf.bufferIdentifiers = &outDataDescription;
+
+    // Fed by aacEncEncode
+    AACENC_OutArgs outputDesc;
+    // ======
+
+    int result = aacEncEncode(m_aacEnc, &inputBuf, &outputBuf, &inputDesc, &outputDesc);
+    if(result != AACENC_OK) {
+        kLogger.warning() << "aacEncEncode failed! error code:" << result;
+        free(inData);
+        free(outData);
+        return;
+    }
+
+    m_pCallback->write(nullptr, outData, 0, outputDesc.numOutBytes);
+    free(inData);
+    free(outData);
 }
 
 void EncoderFdkAac::updateMetaData(const QString& artist, const QString& title, const QString& album) {
-
+    (void)artist, (void)title, (void)album;
 }
 
 void EncoderFdkAac::flush() {
-
 }
