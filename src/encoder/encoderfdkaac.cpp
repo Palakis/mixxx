@@ -192,6 +192,11 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
         return;
     }
 
+    int sampleDiff = inputDesc.numInSamples - outputDesc.numInSamples;
+    if(sampleDiff > 0) {
+        kLogger.warning() << "encoder ignored" << sampleDiff << "samples!";
+    }
+
     m_pCallback->write(nullptr, outData, 0, outputDesc.numOutBytes);
     free(inData);
     free(outData);
