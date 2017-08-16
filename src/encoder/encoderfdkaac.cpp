@@ -168,6 +168,10 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
         m_pInputBuffer->write(samples, sampleCount);
     }
 
+    processFIFO();
+}
+
+void EncoderFdkAac::processFIFO() {
     int readRequired = m_aacInfo.frameLength * m_channels;
     while (m_pInputBuffer->readAvailable() >= readRequired) {
         CSAMPLE* chunk = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
@@ -238,4 +242,6 @@ void EncoderFdkAac::updateMetaData(const QString& artist, const QString& title, 
 }
 
 void EncoderFdkAac::flush() {
+    // At this point there may still be samples in the FIFO buffer.
+    processFIFO();
 }

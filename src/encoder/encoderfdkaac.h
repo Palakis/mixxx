@@ -145,6 +145,9 @@ class EncoderFdkAac: public Encoder {
     aacEncInfo_ aacEncInfo;
     aacEncoder_SetParam_ aacEncoder_SetParam;
 
+    // Instance methods
+    void processFIFO();
+
     // Instance attributes
     int m_aacAot;
     int m_bitrate;
