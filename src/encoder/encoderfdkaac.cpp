@@ -18,7 +18,12 @@ const mixxx::Logger kLogger("EncoderFdkAac");
 }
 
 EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
-    : m_aacAot(0),
+    : aacEncOpen(nullptr),
+      aacEncClose(nullptr),
+      aacEncEncode(nullptr),
+      aacEncInfo(nullptr),
+      aacEncoder_SetParam(nullptr),
+      m_aacAot(0),
       m_bitrate(0),
       m_channels(0),
       m_samplerate(0),
@@ -89,6 +94,12 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
         ErrorDialogHandler::instance()->requestErrorDialog(props);
         return;
     }
+
+    aacEncOpen = (aacEncOpen_)m_library->resolve("aacEncOpen");
+    aacEncClose = (aacEncClose_)m_library->resolve("aacEncClose");
+    aacEncEncode = (aacEncEncode_)m_library->resolve("aacEncEncode");
+    aacEncInfo = (aacEncInfo_)m_library->resolve("aacEncInfo");
+    aacEncoder_SetParam = (aacEncoder_SetParam_)m_library->resolve("aacEncoder_SetParam");
 }
 
 EncoderFdkAac::~EncoderFdkAac() {
