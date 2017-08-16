@@ -29,8 +29,8 @@ class EncoderOpus: public Encoder {
   private:
     static QString opusErrorString(int error);
     static int getSerial();
-    unsigned char* createOpusHeader(int* size);
-    unsigned char* createOpusTags(int* size);
+    void pushHeaderPacket();
+    void pushTagsPacket();
     void initStream();
     void writePage(ogg_packet* pPacket);
     void processFIFO();

@@ -88,49 +88,21 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
 }
 
 void EncoderOpus::initStream() {
-    // Based on BUTT's Opus encoder implementation
-    ogg_packet packet;
     ogg_stream_clear(&m_oggStream);
     ogg_stream_init(&m_oggStream, getSerial());
     m_header_write = true;
     m_granulePos = 0;
     m_packetNumber = 0;
 
-    int headerSize = 0;
-    unsigned char* headerData = createOpusHeader(&headerSize);
-
-    int tagsSize = 0;
-    unsigned char* tagsData = createOpusTags(&tagsSize);
-
-    // Push stream header
-    packet.b_o_s = 1;
-    packet.e_o_s = 0;
-    packet.granulepos = 0;
-    packet.packetno = m_packetNumber++;
-    packet.packet = headerData;
-    packet.bytes = headerSize;
-
-    ogg_stream_packetin(&m_oggStream, &packet);
-
-    // Push tags
-    packet.b_o_s = 0;
-    packet.e_o_s = 0;
-    packet.granulepos = 0;
-    packet.packetno = m_packetNumber++;
-    packet.packet = tagsData;
-    packet.bytes = tagsSize;
-
-    ogg_stream_packetin(&m_oggStream, &packet);
-
-    free(headerData);
-    free(tagsData);
+    pushHeaderPacket();
+    pushTagsPacket();
 }
 
 // Binary header construction is done manually to properly
 // handle endianness of multi-byte number fields
-unsigned char* EncoderOpus::createOpusHeader(int* size) {
+void EncoderOpus::pushHeaderPacket() {
     unsigned char* data = (unsigned char*)malloc(1024);
-    memset(data, 0, *size);
+    memset(data, 0, 1024);
     int pos = 0; // Current position
 
     // Opus identification header
@@ -166,13 +138,24 @@ unsigned char* EncoderOpus::createOpusHeader(int* size) {
     data[pos++] = 0;
 
     // Ignore channel mapping table
-    *size = pos;
-    return data;
+
+    // Push finished header to stream
+    ogg_packet packet;
+    packet.b_o_s = 1;
+    packet.e_o_s = 0;
+    packet.granulepos = 0;
+    packet.packetno = m_packetNumber++;
+    packet.packet = data;
+    packet.bytes = pos;
+
+    ogg_stream_packetin(&m_oggStream, &packet);
+    free(data);
 }
 
-unsigned char* EncoderOpus::createOpusTags(int* size) {
-    unsigned char* data = (unsigned char*)malloc(1024);
-    memset(data, 0, *size);
+void EncoderOpus::pushTagsPacket() {
+    // 2048 bytes should give enough room for most typical comments
+    unsigned char* data = (unsigned char*)malloc(2048);
+    memset(data, 0, 2048);
     int pos = 0; // Current position
 
     // Opus comment header
@@ -220,8 +203,17 @@ unsigned char* EncoderOpus::createOpusTags(int* size) {
         pos += commentLength;
     }
 
-    *size = pos;
-    return data;
+    // Push finished tags frame to stream
+    ogg_packet packet;
+    packet.b_o_s = 0;
+    packet.e_o_s = 0;
+    packet.granulepos = 0;
+    packet.packetno = m_packetNumber++;
+    packet.packet = data;
+    packet.bytes = pos;
+
+    ogg_stream_packetin(&m_oggStream, &packet);
+    free(data);
 }
 
 void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
