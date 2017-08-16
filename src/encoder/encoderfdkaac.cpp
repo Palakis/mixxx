@@ -145,6 +145,8 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
     aacEncoder_SetParam(m_aacEnc, AACENC_BITRATE, m_bitrate * 1000);
     // Transport type (2 = ADTS)
     aacEncoder_SetParam(m_aacEnc, AACENC_TRANSMUX, 2);
+    // Afterburner enabled
+    aacEncoder_SetParam(m_aacEnc, AACENC_AFTERBURNER, 1);
 
     // Actual encoder init, validates settings provided above
     int result = aacEncEncode(m_aacEnc, nullptr, nullptr, nullptr, nullptr);
