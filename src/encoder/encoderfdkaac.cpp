@@ -11,7 +11,6 @@
 #include "encoder/encoderfdkaac.h"
 
 namespace {
-const int kInputSamples = 2048;
 // recommended in encoder documentation, section 2.4.1
 const int kOutBufferBits = 6144;
 const mixxx::Logger kLogger("EncoderFdkAac");
@@ -110,7 +109,7 @@ EncoderFdkAac::~EncoderFdkAac() {
 void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
     // TODO(Palakis): support more bitrate configurations
     m_bitrate = settings.getQuality();
-    switch(settings.getChannelMode()) {
+    switch (settings.getChannelMode()) {
         case EncoderSettings::ChannelMode::MONO:
             m_channels = 1;
             break;
@@ -148,28 +147,29 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
 
     // Actual encoder init, validates settings provided above
     int result = aacEncEncode(m_aacEnc, nullptr, nullptr, nullptr, nullptr);
-    if(result != AACENC_OK) {
+    if (result != AACENC_OK) {
         kLogger.warning() << "aac encoder init failed! error code:" << result;
         return -1;
     }
 
     aacEncInfo(m_aacEnc, &m_aacInfo);
+    // TODO(Palakis): use constant or get value from engine
     m_pInputBuffer = new FIFO<CSAMPLE>(60000 * 2);
     return 0;
 }
 
 void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) {
-    if(!m_pInputBuffer) {
+    if (!m_pInputBuffer) {
         return;
     }
 
     int writeCount = math_min(sampleCount, m_pInputBuffer->writeAvailable());
-    if(writeCount > 0) {
+    if (writeCount > 0) {
         m_pInputBuffer->write(samples, sampleCount);
     }
 
-    int readRequired = kInputSamples;
-    while(m_pInputBuffer->readAvailable() >= readRequired) {
+    int readRequired = m_aacInfo.frameLength * m_channels;
+    while (m_pInputBuffer->readAvailable() >= readRequired) {
         CSAMPLE* chunk = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
         m_pInputBuffer->read(chunk, readRequired);
 
@@ -214,7 +214,7 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
         // ======
 
         int result = aacEncEncode(m_aacEnc, &inputBuf, &outputBuf, &inputDesc, &outputDesc);
-        if(result != AACENC_OK) {
+        if (result != AACENC_OK) {
             kLogger.warning() << "aacEncEncode failed! error code:" << result;
             free(inData);
             free(outData);
@@ -222,7 +222,7 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
         }
 
         int sampleDiff = inputDesc.numInSamples - outputDesc.numInSamples;
-        if(sampleDiff > 0) {
+        if (sampleDiff > 0) {
             kLogger.warning() << "encoder ignored" << sampleDiff << "samples!";
         }
 
