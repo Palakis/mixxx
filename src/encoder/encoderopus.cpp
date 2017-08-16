@@ -153,9 +153,29 @@ void EncoderOpus::pushHeaderPacket() {
 }
 
 void EncoderOpus::pushTagsPacket() {
-    // 2048 bytes should give enough room for most typical comments
-    unsigned char* data = (unsigned char*)malloc(2048);
-    memset(data, 0, 2048);
+    const char* versionString = opus_get_version_string();
+
+    // == Compute tags frame buffer size ==
+    // - 8 bytes for the magic signature
+    // - 4 bytes for the vendor string length
+    // - x bytes vendor for the vendor string
+    // - 4 bytes for the comments list length
+    int headerSize = 8 + 4 + strlen(versionString) + 4;
+    // - x bytes the comments list
+    for (auto pair : m_opusComments.toStdMap()) {
+        QString key = pair.first;
+        QString value = pair.second;
+        QString comment = key + "=" + value;
+
+        // One comment is:
+        // - 4 bytes of string length
+        // - string data
+        headerSize += (4 + strlen(comment.toUtf8().constData()));
+     }
+
+    // == Actual frame building ==
+    unsigned char* data = (unsigned char*)malloc(headerSize);
+    memset(data, 0, headerSize);
     int pos = 0; // Current position
 
     // Opus comment header
@@ -167,14 +187,13 @@ void EncoderOpus::pushTagsPacket() {
 
     // Vendor string (mandatory)
     // length field (4 bytes, little-endian) + actual string
-    const char* version = opus_get_version_string();
-    int versionLength = strlen(version);
+    int versionLength = strlen(versionString);
     // Write length field
     for (int x = 0; x < 4; x++) {
         data[pos++] = (versionLength >> (x*8)) & 0xFF;
     }
     // Write string
-    memcpy(data + pos, version, versionLength);
+    memcpy(data + pos, versionString, versionLength);
     pos += versionLength;
 
     // Number of comments (4 bytes, little-endian)
@@ -312,7 +331,9 @@ void EncoderOpus::writePage(ogg_packet* pPacket) {
 }
 
 void EncoderOpus::updateMetaData(const QString& artist, const QString& title, const QString& album) {
-    (void)artist, (void)title, (void)album;
+    m_opusComments.insert("ARTIST", artist);
+    m_opusComments.insert("TITLE", title);
+    m_opusComments.insert("ALBUM", album);
 }
 
 void EncoderOpus::flush() {
