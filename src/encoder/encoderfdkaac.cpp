@@ -162,13 +162,16 @@ EncoderFdkAac::~EncoderFdkAac() {
 
 // TODO(Palakis): test this on Windows
 QString EncoderFdkAac::buttWindowsFdkAac() {
+    QString appData = QDesktopServices::storageLocation(
+            QDesktopServices::DataLocation);
+    appData = QFileInfo(appData).absolutePath();
+
     // Candidate paths for a butt installation
     QStringList searchPaths;
     searchPaths << "C:\\Program Files";
     searchPaths << "C:\\Program Files (x86)";
-    // AppData
-    searchPaths << QDesktopServices::storageLocation(
-            QDesktopServices::DataLocation);
+    searchPaths << appData;
+    searchPaths << (appData + "\\Local");
 
     // Try to find a butt installation in one of the
     // potential paths above
