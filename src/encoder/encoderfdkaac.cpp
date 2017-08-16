@@ -52,9 +52,9 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
     libnames << "libfdk-aac.dll";
     libnames << "libfdk-aac-1.dll";
 #elif __APPLE__
-    // TODO(Palakis): double-check macOS paths
+    // Using Homebrew ('brew install fdk-aac' command):
     libnames << "/usr/local/lib/libfdk-aac.dylib";
-    //Using MacPorts (former DarwinPorts) results in ...
+    // Using MacPorts ('sudo port install libfdk-aac' command):
     libnames << "/opt/local/lib/libfdk-aac.dylib";
 #endif
 
