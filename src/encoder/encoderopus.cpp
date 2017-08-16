@@ -126,7 +126,8 @@ void EncoderOpus::initStream() {
     free(tagsData);
 }
 
-// TODO(Palakis): easier and cleaner binary manipulations
+// Binary header construction is done manually to properly
+// handle endianness of multi-byte number fields
 unsigned char* EncoderOpus::createOpusHeader(int* size) {
     unsigned char* data = (unsigned char*)malloc(1024);
     memset(data, 0, *size);
@@ -169,7 +170,6 @@ unsigned char* EncoderOpus::createOpusHeader(int* size) {
     return data;
 }
 
-// TODO(Palakis): easier and cleaner binary manipulations
 unsigned char* EncoderOpus::createOpusTags(int* size) {
     unsigned char* data = (unsigned char*)malloc(1024);
     memset(data, 0, *size);
