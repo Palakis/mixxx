@@ -5,10 +5,10 @@
 #define ENCODER_ENCODERFDKAAC_H
 
 #include <fdk-aac/aacenc_lib.h>
-
 #include <QLibrary>
 
 #include "encoder/encoder.h"
+#include "util/fifo.h"
 
 class EncoderFdkAac: public Encoder {
   public:
@@ -28,6 +28,7 @@ class EncoderFdkAac: public Encoder {
     int m_samplerate;
     EncoderCallback* m_pCallback;
     QLibrary* m_library;
+    FIFO<CSAMPLE>* m_pInputBuffer;
     HANDLE_AACENCODER m_aacEnc;
     AACENC_InfoStruct m_aacInfo;
 };
