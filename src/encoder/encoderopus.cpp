@@ -15,6 +15,7 @@ namespace {
 const int kMaxOpusBufferSize = 1+1275;
 
 const int kChannelSamplesPerFrame = 1920; // Opus' accepted sample size for 48khz
+const int kReadRequired = kChannelSamplesPerFrame * 2;
 const mixxx::Logger kLogger("EncoderOpus");
 }
 
@@ -23,27 +24,29 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_channels(0),
       m_samplerate(0),
       m_pCallback(pCallback),
-      m_pFrameBuffer(nullptr),
+      m_pFifoBuffer(nullptr),
+      m_pChunkBuffer(nullptr),
       m_pOpus(nullptr),
       m_header_write(false),
       m_packetNumber(0),
       m_granulePos(0) {
     m_opusComments.insert("ENCODER", "mixxx/libopus");
-    m_pOpusBuffer = (unsigned char*)malloc(kMaxOpusBufferSize);
+    m_pOpusDataBuffer = new unsigned char[kMaxOpusBufferSize]();
     ogg_stream_init(&m_oggStream, rand());
 }
 
 EncoderOpus::~EncoderOpus() {
-    if (m_pOpus) {
+    if (m_pOpus)
         opus_encoder_destroy(m_pOpus);
-    }
 
-    if (m_pFrameBuffer) {
-        free(m_pFrameBuffer);
-    }
+    if (m_pChunkBuffer)
+        delete m_pChunkBuffer;
+
+    if (m_pFifoBuffer)
+        delete m_pFifoBuffer;
 
     ogg_stream_clear(&m_oggStream);
-    delete m_pOpusBuffer;
+    delete m_pOpusDataBuffer;
 }
 
 void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
@@ -84,9 +87,10 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     opus_encoder_ctl(m_pOpus, OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
 
     // TODO(Palakis): use constant or have the engine provide that value
-    m_pFrameBuffer = new FIFO<CSAMPLE>(57344 * 2);
-
+    m_pFifoBuffer = new FIFO<CSAMPLE>(57344 * 2);
+    m_pChunkBuffer = new CSAMPLE[kChannelSamplesPerFrame * 2 * sizeof(CSAMPLE)]();
     initStream();
+
     return 0;
 }
 
@@ -257,7 +261,7 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
     }
 
     int writeRequired = size;
-    int writeAvailable = m_pFrameBuffer->writeAvailable();
+    int writeAvailable = m_pFifoBuffer->writeAvailable();
     if (writeRequired > writeAvailable) {
         kLogger.warning() << "FIFO buffer too small, loosing samples!"
                           << "required:" << writeRequired
@@ -266,43 +270,38 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 
     int writeCount = math_min(writeRequired, writeAvailable);
     if (writeCount > 0) {
-        m_pFrameBuffer->write(samples, writeCount);
+        m_pFifoBuffer->write(samples, writeCount);
     }
 
     processFIFO();
 }
 
 void EncoderOpus::processFIFO() {
-    int readRequired = kChannelSamplesPerFrame * 2;
-    while (m_pFrameBuffer->readAvailable() >= readRequired) {
-        CSAMPLE* dataPtr = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
-        m_pFrameBuffer->read(dataPtr, readRequired);
+    while (m_pFifoBuffer->readAvailable() >= kReadRequired) {
+        memset(m_pChunkBuffer, 0, kReadRequired * sizeof(CSAMPLE));
+        m_pFifoBuffer->read(m_pChunkBuffer, kReadRequired);
 
-        int samplesPerChannel = readRequired / m_channels;
-        int result = opus_encode_float(m_pOpus, dataPtr, samplesPerChannel, m_pOpusBuffer, kMaxOpusBufferSize);
-        free(dataPtr);
+        int samplesPerChannel = kReadRequired / m_channels;
+        int result = opus_encode_float(m_pOpus, m_pChunkBuffer, samplesPerChannel,
+                m_pOpusDataBuffer, kMaxOpusBufferSize);
 
         if (result < 1) {
             kLogger.warning() << "opus_encode_float failed:" << opusErrorString(result);
             return;
         }
 
-        unsigned char* packetData = (unsigned char*)malloc(result);
-        memcpy(packetData, m_pOpusBuffer, result);
-
         ogg_packet packet;
         packet.b_o_s = 0;
         packet.e_o_s = 0;
         packet.granulepos = m_granulePos;
         packet.packetno = m_packetNumber;
-        packet.packet = packetData;
+        packet.packet = m_pOpusDataBuffer;
         packet.bytes = result;
 
         m_granulePos += samplesPerChannel;
         m_packetNumber += 1;
 
         writePage(&packet);
-        free(packetData);
     }
 }
 

@@ -39,9 +39,10 @@ class EncoderOpus: public Encoder {
     int m_channels;
     int m_samplerate;
     EncoderCallback* m_pCallback;
-    FIFO<CSAMPLE>* m_pFrameBuffer;
+    FIFO<CSAMPLE>* m_pFifoBuffer;
+    CSAMPLE* m_pChunkBuffer;
     OpusEncoder* m_pOpus;
-    unsigned char* m_pOpusBuffer;
+    unsigned char* m_pOpusDataBuffer;
     ogg_stream_state m_oggStream;
     ogg_page m_oggPage;
     bool m_header_write;
