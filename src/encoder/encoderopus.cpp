@@ -73,10 +73,10 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
         kLogger.warning() << "initEncoder failed: samplerate not supported by Opus";
 
         QString invalidSamplerate = QObject::tr(
-                "Recording at samplerates other than 48 kHz "
+                "Using Opus at samplerates other than 48 kHz "
                 "is not supported by the Opus encoder. Please use "
                 "48000 Hz in \"Sound Hardware\" preferences "
-                "or switch to a different recording format.");
+                "or switch to a different encoding.");
 
         ErrorDialogProperties* props = ErrorDialogHandler::instance()->newDialogProperties();
         props->setType(DLG_WARNING);
