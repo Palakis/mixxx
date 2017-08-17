@@ -25,7 +25,7 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_samplerate(0),
       m_pCallback(pCallback),
       m_pFifoBuffer(nullptr),
-      m_pChunkBuffer(nullptr),
+      m_pFifoChunkBuffer(nullptr),
       m_pOpus(nullptr),
       m_header_write(false),
       m_packetNumber(0),
@@ -39,8 +39,8 @@ EncoderOpus::~EncoderOpus() {
     if (m_pOpus)
         opus_encoder_destroy(m_pOpus);
 
-    if (m_pChunkBuffer)
-        delete m_pChunkBuffer;
+    if (m_pFifoChunkBuffer)
+        delete m_pFifoChunkBuffer;
 
     if (m_pFifoBuffer)
         delete m_pFifoBuffer;
@@ -101,7 +101,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
 
     // TODO(Palakis): use constant or have the engine provide that value
     m_pFifoBuffer = new FIFO<CSAMPLE>(57344 * 2);
-    m_pChunkBuffer = new CSAMPLE[kChannelSamplesPerFrame * 2 * sizeof(CSAMPLE)]();
+    m_pFifoChunkBuffer = new CSAMPLE[kChannelSamplesPerFrame * 2 * sizeof(CSAMPLE)]();
     initStream();
 
     return 0;
@@ -291,11 +291,11 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 
 void EncoderOpus::processFIFO() {
     while (m_pFifoBuffer->readAvailable() >= kReadRequired) {
-        memset(m_pChunkBuffer, 0, kReadRequired * sizeof(CSAMPLE));
-        m_pFifoBuffer->read(m_pChunkBuffer, kReadRequired);
+        memset(m_pFifoChunkBuffer, 0, kReadRequired * sizeof(CSAMPLE));
+        m_pFifoBuffer->read(m_pFifoChunkBuffer, kReadRequired);
 
         int samplesPerChannel = kReadRequired / m_channels;
-        int result = opus_encode_float(m_pOpus, m_pChunkBuffer, samplesPerChannel,
+        int result = opus_encode_float(m_pOpus, m_pFifoChunkBuffer, samplesPerChannel,
                 m_pOpusDataBuffer, kMaxOpusBufferSize);
 
         if (result < 1) {
