@@ -1,6 +1,9 @@
 // encoderopus.cpp
 // Create on August 15th 2017 by Palakis
 
+#include <QByteArray>
+#include <QMapIterator>
+
 #include "util/logger.h"
 
 #include "encoder/encoderopus.h"
@@ -101,15 +104,25 @@ void EncoderOpus::initStream() {
 // Binary header construction is done manually to properly
 // handle endianness of multi-byte number fields
 void EncoderOpus::pushHeaderPacket() {
-    unsigned char* data = (unsigned char*)malloc(1024);
-    memset(data, 0, 1024);
-    int pos = 0; // Current position
-
     // Opus identification header
     // Format from https://tools.ietf.org/html/rfc7845.html#section-5.1
 
+    // Header buffer size:
+    // - Magic signature: 8 bytes
+    // - Version: 1 byte
+    // - Channel count: 1 byte
+    // - Pre-skip: 2 bytes
+    // - Samplerate: 4 bytes
+    // - Output Gain: 2 bytes
+    // - Mapping family: 1 byte
+    // - Channel mapping table: ignored
+    // Total: 19 bytes
+    const int frameSize = 19;
+    unsigned char* data = new unsigned char[frameSize]();
+    int pos = 0; // Current position
+
     // Magic signature (8 bytes)
-    memcpy(data + 0, "OpusHead", 8);
+    memcpy(data + pos, "OpusHead", 8);
     pos += 8;
 
     // Version number (1 byte, fixed to 1)
@@ -146,81 +159,82 @@ void EncoderOpus::pushHeaderPacket() {
     packet.granulepos = 0;
     packet.packetno = m_packetNumber++;
     packet.packet = data;
-    packet.bytes = pos;
+    packet.bytes = frameSize;
 
     ogg_stream_packetin(&m_oggStream, &packet);
-    free(data);
+    delete data;
 }
 
 void EncoderOpus::pushTagsPacket() {
-    const char* versionString = opus_get_version_string();
+    // Opus comment header
+    // Format from https://tools.ietf.org/html/rfc7845.html#section-5.2
 
-    // == Compute tags frame buffer size ==
-    // - 8 bytes for the magic signature
-    // - 4 bytes for the vendor string length
-    // - x bytes vendor for the vendor string
-    // - 4 bytes for the comments list length
-    int headerSize = 8 + 4 + strlen(versionString) + 4;
-    // - x bytes the comments list
-    for (auto pair : m_opusComments.toStdMap()) {
-        QString key = pair.first;
-        QString value = pair.second;
-        QString comment = key + "=" + value;
+    QByteArray combinedComments;
+    int commentCount = 0;
+
+    const char* vendorString = opus_get_version_string();
+    int vendorStringLength = strlen(vendorString);
+
+    // == Compute tags frame size ==
+    // - Magic signature: 8 bytes
+    // - Vendor string length: 4 bytes
+    // - Vendor string: dynamic size
+    // - Comment list length: 4 bytes
+    int frameSize = 8 + 4 + vendorStringLength + 4;
+    // - Comment list: dynamic size
+    QMapIterator<QString, QString> iter(m_opusComments);
+    while(iter.hasNext()) {
+        iter.next();
+        QString comment = iter.key() + "=" + iter.value();
+
+        // Convert comment to raw UTF-8 data;
+        const char* commentData = comment.toUtf8().constData();
+        int commentDataLength = strlen(commentData);
+        QByteArray commentBytes(commentData, commentDataLength);
 
         // One comment is:
         // - 4 bytes of string length
         // - string data
-        headerSize += (4 + strlen(comment.toUtf8().constData()));
-     }
+
+        // Add comment length field and data to comments "list"
+        for (int x = 0; x < 4; x++) {
+            unsigned char fieldValue = (commentDataLength >> (x*8)) & 0xFF;
+            combinedComments.append(fieldValue);
+        }
+        combinedComments.append(commentBytes);
+
+        // Don't forget to include this comment in the overall size calculation
+        frameSize += (4 + strlen(comment.toUtf8().constData()));
+        commentCount++;
+    }
 
     // == Actual frame building ==
-    unsigned char* data = (unsigned char*)malloc(headerSize);
-    memset(data, 0, headerSize);
+    unsigned char* data = new unsigned char[frameSize]();
     int pos = 0; // Current position
 
-    // Opus comment header
-    // Format from https://tools.ietf.org/html/rfc7845.html#section-5.2
-
     // Magic signature (8 bytes)
-    memcpy(data + 0, "OpusTags", 8);
+    memcpy(data + pos, "OpusTags", 8);
     pos += 8;
 
     // Vendor string (mandatory)
     // length field (4 bytes, little-endian) + actual string
-    int versionLength = strlen(versionString);
     // Write length field
     for (int x = 0; x < 4; x++) {
-        data[pos++] = (versionLength >> (x*8)) & 0xFF;
+        data[pos++] = (vendorStringLength >> (x*8)) & 0xFF;
     }
     // Write string
-    memcpy(data + pos, versionString, versionLength);
-    pos += versionLength;
+    memcpy(data + pos, vendorString, vendorStringLength);
+    pos += vendorStringLength;
 
     // Number of comments (4 bytes, little-endian)
-    int comments = m_opusComments.size();
     for (int x = 0; x < 4; x++) {
-        data[pos++] = (comments >> (x*8)) & 0xFF;
+        data[pos++] = (commentCount >> (x*8)) & 0xFF;
     }
 
-    // Comments
-    // each comment is a string length field (4 bytes, little-endian)
-    // and the actual string data
-    for (auto pair : m_opusComments.toStdMap()) {
-        QString key = pair.first;
-        QString value = pair.second;
-        QString comment = key + "=" + value;
-
-        const char* commentData = comment.toUtf8().constData();
-        int commentLength = strlen(commentData);
-
-        // Write length field
-        for(int x = 0; x < 4; x++) {
-            data[pos++] = (commentLength >> (x*8)) & 0xFF;
-        }
-        // Write string
-        memcpy(data + pos, commentData, commentLength);
-        pos += commentLength;
-    }
+    // Comment list (dynamic size)
+    int commentListLength = combinedComments.size();
+    memcpy(data + pos, combinedComments.constData(), commentListLength);
+    pos += commentListLength;
 
     // Push finished tags frame to stream
     ogg_packet packet;
@@ -229,10 +243,12 @@ void EncoderOpus::pushTagsPacket() {
     packet.granulepos = 0;
     packet.packetno = m_packetNumber++;
     packet.packet = data;
-    packet.bytes = pos;
+    packet.bytes = frameSize;
+
+    kLogger.debug() << data;
 
     ogg_stream_packetin(&m_oggStream, &packet);
-    free(data);
+    delete data;
 }
 
 void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
