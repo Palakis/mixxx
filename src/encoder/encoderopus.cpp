@@ -63,7 +63,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     (void)errorMessage;
     int result;
 
-    if(samplerate != 48000) {
+    if (samplerate != 48000) {
         kLogger.warning() << "initEncoder failed: samplerate not supported by Opus";
         return -1;
     }
