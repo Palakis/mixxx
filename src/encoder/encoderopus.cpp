@@ -99,8 +99,9 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     opus_encoder_ctl(m_pOpus, OPUS_SET_COMPLEXITY(10)); // Highest setting
     opus_encoder_ctl(m_pOpus, OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
 
-    // Set bitrate
-    opus_encoder_ctl(m_pOpus, OPUS_SET_BITRATE(m_bitrate));
+    // Set bitrate in bits per second
+    // m_bitrate is in kilobits per second, conversion needed
+    opus_encoder_ctl(m_pOpus, OPUS_SET_BITRATE(m_bitrate * 1000));
 
     // TODO(Palakis): use constant or have the engine provide that value
     m_pFifoBuffer = new FIFO<CSAMPLE>(57344 * 2);
