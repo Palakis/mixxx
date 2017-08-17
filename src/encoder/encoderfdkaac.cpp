@@ -50,14 +50,20 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
 #ifdef __LINUX__
     libnames << "fdk-aac";
 #elif __WINDOWS__
+    // Give top priority to libfdk-aac copied
+    // into Mixxx's installation folder
     libnames << "libfdk-aac-1.dll";
 
+    // Fallback and user-friendly method: use libfdk-aac
+    // provided with B.U.T.T installed in
+    // a standard location
     QString buttFdkAacPath = buttWindowsFdkAac();
     if(!buttFdkAacPath.isNull()) {
         kLogger.debug() << "Found libfdk-aac at" << buttFdkAacPath;
         libnames << buttFdkAacPath;
     }
 
+    // Last resort choices: try versions with unusual names
     libnames << "libfdk-aac.dll";
     libnames << "libfdkaac.dll";
 #elif __APPLE__
