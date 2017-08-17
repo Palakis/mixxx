@@ -129,9 +129,11 @@ void RecordingManager::splitContinueRecording()
     m_secondsRecordedSplit=0;
 
     QString encodingType = m_pConfig->getValueString(ConfigKey(RECORDING_PREF_KEY, "Encoding"));
+    QString fileExtension = EncoderFactory::getFactory()
+            .getFormatFor(encodingType).fileExtension.toLower();
 
     QString new_base_filename = m_recording_base_file +"part"+QString::number(m_iNumberSplits);
-    m_recordingLocation = new_base_filename + "." +encodingType.toLower();
+    m_recordingLocation = new_base_filename + "." +fileExtension;
 
     m_pConfig->set(ConfigKey(RECORDING_PREF_KEY, "Path"), m_recordingLocation);
     m_pConfig->set(ConfigKey(RECORDING_PREF_KEY, "CuePath"), new_base_filename +".cue");
