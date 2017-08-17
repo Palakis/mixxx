@@ -50,14 +50,16 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
 #ifdef __LINUX__
     libnames << "fdk-aac";
 #elif __WINDOWS__
-    libnames << "libfdkaac.dll";
-    libnames << "libfdk-aac.dll";
     libnames << "libfdk-aac-1.dll";
 
     QString buttFdkAacPath = buttWindowsFdkAac();
     if(!buttFdkAacPath.isNull()) {
+        kLogger.debug() << "Found libfdk-aac at" << buttFdkAacPath;
         libnames << buttFdkAacPath;
     }
+
+    libnames << "libfdk-aac.dll";
+    libnames << "libfdkaac.dll";
 #elif __APPLE__
     // Using Homebrew ('brew install fdk-aac' command):
     libnames << "/usr/local/lib/libfdk-aac.dylib";
@@ -162,26 +164,27 @@ EncoderFdkAac::~EncoderFdkAac() {
 
 // TODO(Palakis): test this on Windows
 QString EncoderFdkAac::buttWindowsFdkAac() {
+    // Return %APPDATA%/Local path
     QString appData = QDesktopServices::storageLocation(
             QDesktopServices::DataLocation);
     appData = QFileInfo(appData).absolutePath();
 
     // Candidate paths for a butt installation
     QStringList searchPaths;
-    searchPaths << "C:\\Program Files";
-    searchPaths << "C:\\Program Files (x86)";
+    searchPaths << "C:/Program Files";
+    searchPaths << "C:/Program Files (x86)";
     searchPaths << appData;
-    searchPaths << (appData + "\\Local");
 
     // Try to find a butt installation in one of the
     // potential paths above
-    for (QString candidate : searchPaths) {
-        QDir folder(candidate);
+    for (QString topPath : searchPaths) {
+        QDir folder(topPath);
         if(!folder.exists()) {
             continue;
         }
 
-        // List subfolders
+        // Typical name for a butt installation folder
+        // is "butt-x.x.x" so list subfolders beginning with "butt"
         QStringList nameFilters("butt*");
         QStringList subfolders =
                 folder.entryList(nameFilters, QDir::Dirs, QDir::Name);
@@ -193,8 +196,12 @@ QString EncoderFdkAac::buttWindowsFdkAac() {
                 continue;
             }
 
+            kLogger.debug()
+                << "Found potential B.U.T.T installation at"
+                << (topPath + "/" + subName);  
+
             QString libFile = "libfdk-aac-1.dll";
-            if(!folder.exists(libFile)) {
+            if(folder.exists(libFile)) {
                 // Found a libfdk-aac here.
                 // Return the full path of the .dll file.
                 return folder.absoluteFilePath(libFile);
