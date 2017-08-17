@@ -269,6 +269,8 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
     aacEncInfo(m_aacEnc, &m_aacInfo);
     // TODO(Palakis): use constant or get value from engine
     m_pInputBuffer = new FIFO<CSAMPLE>(57344 * 2);
+    m_pChunkBuffer = (CSAMPLE*)malloc(
+        m_aacInfo.frameLength * m_channels * sizeof(CSAMPLE));
     return 0;
 }
 
@@ -294,10 +296,14 @@ void EncoderFdkAac::encodeBuffer(const CSAMPLE *samples, const int sampleCount) 
 }
 
 void EncoderFdkAac::processFIFO() {
+    if (!m_pInputBuffer || !m_pChunkBuffer) {
+        return;
+    }
+
     int readRequired = m_aacInfo.frameLength * m_channels;
     while (m_pInputBuffer->readAvailable() >= readRequired) {
-        CSAMPLE* chunk = (CSAMPLE*)malloc(readRequired * sizeof(CSAMPLE));
-        m_pInputBuffer->read(chunk, readRequired);
+        memset(m_pChunkBuffer, 0, readRequired * sizeof(CSAMPLE));
+        m_pInputBuffer->read(m_pChunkBuffer, readRequired);
 
         // fdk-aac only accept pointers for most buffer settings.
         // Declare settings here and point to them below.
@@ -306,7 +312,7 @@ void EncoderFdkAac::processFIFO() {
         SAMPLE* inData = (SAMPLE*)malloc(inDataSize);
         // fdk-aac doesn't support float samples, so convert
         // to integers instead
-        SampleUtil::convertFloat32ToS16(inData, chunk, readRequired);
+        SampleUtil::convertFloat32ToS16(inData, m_pChunkBuffer, readRequired);
         int inDataDescription = IN_AUDIO_DATA;
 
         int outElemSize = sizeof(unsigned char);
@@ -355,7 +361,6 @@ void EncoderFdkAac::processFIFO() {
         m_pCallback->write(nullptr, outData, 0, outputDesc.numOutBytes);
         free(inData);
         free(outData);
-        free(chunk);
     }
 }
 

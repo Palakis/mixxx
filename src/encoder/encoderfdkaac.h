@@ -207,6 +207,7 @@ class EncoderFdkAac: public Encoder {
     EncoderCallback* m_pCallback;
     QLibrary* m_library;
     FIFO<CSAMPLE>* m_pInputBuffer;
+    CSAMPLE* m_pChunkBuffer;
     HANDLE_AACENCODER m_aacEnc;
     AACENC_InfoStruct m_aacInfo;
 };
