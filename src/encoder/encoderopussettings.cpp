@@ -11,6 +11,8 @@ const char* kQualityKey = "Opus_Quality";
 const mixxx::Logger kLogger("EncoderOpusSettings");
 }
 
+const QString EncoderOpusSettings::BITRATE_MODE_GROUP = "Opus_BitrateMode";
+
 EncoderOpusSettings::EncoderOpusSettings(UserSettingsPointer pConfig)
     : m_pConfig(pConfig) {
     m_qualList.append(32);
@@ -26,6 +28,13 @@ EncoderOpusSettings::EncoderOpusSettings(UserSettingsPointer pConfig)
     m_qualList.append(256);
     m_qualList.append(320);
     m_qualList.append(510); // Max Opus bitrate
+
+    QList<QString> modes;
+    modes.append(QObject::tr("Constrained VBR"));
+    modes.append(QObject::tr("CBR"));
+    modes.append(QObject::tr("Full VBR (bitrate ignored)"));
+    m_radioList.append(OptionsGroup(
+            QObject::tr("Bitrate Mode"), BITRATE_MODE_GROUP, modes));
 }
 
 EncoderOpusSettings::~EncoderOpusSettings() {
@@ -83,4 +92,56 @@ int EncoderOpusSettings::getQualityIndex() const {
                           << "returning default which is" << kDefaultQualityIndex;
         return kDefaultQualityIndex;
     }
+}
+
+QList<EncoderSettings::OptionsGroup> EncoderOpusSettings::getOptionGroups() const {
+    return m_radioList;
+}
+
+void EncoderOpusSettings::setGroupOption(QString groupCode, int optionIndex) {
+    bool found = false;
+    for (OptionsGroup group : m_radioList) {
+        if (groupCode == group.groupCode) {
+            found = true;
+            if (optionIndex < group.controlNames.size() || optionIndex == 1) {
+                m_pConfig->set(
+                        ConfigKey(RECORDING_PREF_KEY, BITRATE_MODE_GROUP),
+                        ConfigValue(optionIndex));
+            } else {
+                kLogger.warning()
+                        << "Received an index out of range for:"
+                        << groupCode << ", index:" << optionIndex;
+            }
+        }
+    }
+
+    if (!found) {
+        kLogger.warning()
+                << "Received an unknown groupCode on setGroupOption:" << groupCode;
+    }
+}
+
+int EncoderOpusSettings::getSelectedOption(QString groupCode) const {
+    int value = m_pConfig->getValue(
+            ConfigKey(RECORDING_PREF_KEY, BITRATE_MODE_GROUP), 0);
+
+    bool found = false;
+    for (OptionsGroup group : m_radioList) {
+        if (groupCode == group.groupCode) {
+            found = true;
+            if (value >= group.controlNames.size() && value > 1) {
+                kLogger.warning()
+                        << "Value saved for" << groupCode
+                        << "on preferences is out of range" << value << ". Returning 0";
+                value = 0;
+            }
+        }
+    }
+
+    if (!found) {
+        kLogger.warning()
+                << "Received an unknown groupCode on getSelectedOption:" << groupCode;
+    }
+
+    return value;
 }

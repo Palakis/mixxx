@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QMapIterator>
 
+#include "encoder/encoderopussettings.h"
 #include "util/logger.h"
 
 #include "encoder/encoderopus.h"
@@ -21,6 +22,7 @@ const mixxx::Logger kLogger("EncoderOpus");
 
 EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
     : m_bitrate(0),
+      m_bitrateMode(0),
       m_channels(0),
       m_samplerate(0),
       m_pCallback(pCallback),
@@ -50,8 +52,8 @@ EncoderOpus::~EncoderOpus() {
 }
 
 void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
-    // TODO(Palakis): support VBR
     m_bitrate = settings.getQuality();
+    m_bitrateMode = settings.getSelectedOption(EncoderOpusSettings::BITRATE_MODE_GROUP);
     switch (settings.getChannelMode()) {
         case EncoderSettings::ChannelMode::MONO:
             m_channels = 1;
@@ -99,9 +101,21 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     opus_encoder_ctl(m_pOpus, OPUS_SET_COMPLEXITY(10)); // Highest setting
     opus_encoder_ctl(m_pOpus, OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
 
-    // Set bitrate in bits per second
-    // m_bitrate is in kilobits per second, conversion needed
-    opus_encoder_ctl(m_pOpus, OPUS_SET_BITRATE(m_bitrate * 1000));
+    if(m_bitrateMode == 0) {
+        // == Constrained VBR ==
+        // Default mode, gives the best
+        opus_encoder_ctl(m_pOpus, OPUS_SET_BITRATE(m_bitrate * 1000)); // convert to bits/second
+        opus_encoder_ctl(m_pOpus, OPUS_SET_VBR(1)); // default value in libopus
+        opus_encoder_ctl(m_pOpus, OPUS_SET_VBR_CONSTRAINT(1)); // Constrained VBR
+    } else if(m_bitrateMode == 1) {
+        // == CBR (quality loss at low bitrates) ==
+        opus_encoder_ctl(m_pOpus, OPUS_SET_BITRATE(m_bitrate * 1000)); // convert to bits/second
+        opus_encoder_ctl(m_pOpus, OPUS_SET_VBR(0));
+    } else if(m_bitrateMode == 2) {
+        // == Full VBR ==
+        opus_encoder_ctl(m_pOpus, OPUS_SET_VBR(1));
+        opus_encoder_ctl(m_pOpus, OPUS_SET_VBR_CONSTRAINT(0)); // Unconstrained VBR
+    }
 
     // TODO(Palakis): use constant or have the engine provide that value
     m_pFifoBuffer = new FIFO<CSAMPLE>(57344 * 2);
