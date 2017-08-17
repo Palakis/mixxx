@@ -87,6 +87,8 @@ void RecordingManager::slotToggleRecording(double v) {
 void RecordingManager::startRecording() {
     QString encodingType = m_pConfig->getValueString(
             ConfigKey(RECORDING_PREF_KEY, "Encoding"));
+    QString fileExtension = EncoderFactory::getFactory()
+        .getFormatFor(encodingType).fileExtension.toLower();
 
     m_iNumberOfBytesRecordedSplit = 0;
     m_secondsRecordedSplit=0;
@@ -105,13 +107,13 @@ void RecordingManager::startRecording() {
     // Append file extension.
     QString date_time_str = formatDateTimeForFilename(QDateTime::currentDateTime());
     m_recordingFile = QString("%1.%2")
-            .arg(date_time_str, encodingType.toLower());
+            .arg(date_time_str, fileExtension.toLower());
 
     // Storing the absolutePath of the recording file without file extension.
     m_recording_base_file = getRecordingDir();
     m_recording_base_file.append("/").append(date_time_str);
     // Appending file extension to get the filelocation.
-    m_recordingLocation = m_recording_base_file + "."+ encodingType.toLower();
+    m_recordingLocation = m_recording_base_file + "."+ fileExtension;
     m_pConfig->set(ConfigKey(RECORDING_PREF_KEY, "Path"), m_recordingLocation);
     m_pConfig->set(ConfigKey(RECORDING_PREF_KEY, "CuePath"), m_recording_base_file +".cue");
 
