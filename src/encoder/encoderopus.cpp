@@ -103,7 +103,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
 
     if(m_bitrateMode == 0) {
         // == Constrained VBR ==
-        // Default mode, gives the best
+        // Default mode, gives the best quality/bitrate compromise
         opus_encoder_ctl(m_pOpus, OPUS_SET_BITRATE(m_bitrate * 1000)); // convert to bits/second
         opus_encoder_ctl(m_pOpus, OPUS_SET_VBR(1)); // default value in libopus
         opus_encoder_ctl(m_pOpus, OPUS_SET_VBR_CONSTRAINT(1)); // Constrained VBR
