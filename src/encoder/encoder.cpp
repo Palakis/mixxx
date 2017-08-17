@@ -132,6 +132,10 @@ EncoderSettingsPointer EncoderFactory::getEncoderSettings(Encoder::Format format
         return std::make_shared<EncoderMp3Settings>(pConfig);
     } else if (format.internalName == ENCODING_OGG) {
         return std::make_shared<EncoderVorbisSettings>(pConfig);
+    } else if (format.internalName == ENCODING_AAC ||
+            format.internalName == ENCODING_HEAAC ||
+            format.internalName == ENCODING_HEAACV2) {
+        return std::make_shared<EncoderFdkAacSettings>(pConfig);
     } else {
         qWarning() << "Unsuported format requested! " << format.internalName;
         DEBUG_ASSERT(false);
