@@ -5,13 +5,14 @@
 #define ENCODER_ENCODERFDKAAC_H
 
 #include <QLibrary>
+#include <QString>
 
 #include "encoder/encoder.h"
 #include "util/fifo.h"
 
 class EncoderFdkAac: public Encoder {
   public:
-    EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat);
+    EncoderFdkAac(EncoderCallback* pCallback, QString pFormat);
     virtual ~EncoderFdkAac();
 
     int initEncoder(int samplerate, QString errorMessage) override;
@@ -206,9 +207,11 @@ class EncoderFdkAac: public Encoder {
     int m_samplerate;
     EncoderCallback* m_pCallback;
     QLibrary* m_library;
-    FIFO<CSAMPLE>* m_pInputBuffer;
-    CSAMPLE* m_pChunkBuffer;
+    FIFO<SAMPLE>* m_pInputFifo;
+    SAMPLE* m_pFifoChunkBuffer;
+    int m_readRequired;
     HANDLE_AACENCODER m_aacEnc;
+    unsigned char* m_pAacDataBuffer;
     AACENC_InfoStruct m_aacInfo;
 };
 
