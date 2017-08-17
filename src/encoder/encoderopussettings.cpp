@@ -6,7 +6,7 @@
 #include "util/logger.h"
 
 namespace {
-const int kDefaultBitrateIndex = 6;
+const int kDefaultQualityIndex = 6;
 const char* kQualityKey = "Opus_Quality";
 const mixxx::Logger kLogger("EncoderOpusSettings");
 }
@@ -58,7 +58,7 @@ void EncoderOpusSettings::setQualityByIndex(int qualityIndex) {
 }
 int EncoderOpusSettings::getQuality() const {
     int qualityIndex = m_pConfig->getValue(
-            ConfigKey(RECORDING_PREF_KEY, kQualityKey), kDefaultBitrateIndex);
+            ConfigKey(RECORDING_PREF_KEY, kQualityKey), kDefaultQualityIndex);
 
     if (qualityIndex >= 0 && qualityIndex < m_qualList.size()) {
         return m_qualList.at(qualityIndex);
@@ -71,7 +71,7 @@ int EncoderOpusSettings::getQuality() const {
 
 int EncoderOpusSettings::getQualityIndex() const {
     int qualityIndex = m_pConfig->getValue(
-            ConfigKey(RECORDING_PREF_KEY, kQualityKey), kDefaultBitrateIndex);
+            ConfigKey(RECORDING_PREF_KEY, kQualityKey), kDefaultQualityIndex);
 
     if (qualityIndex >= 0 && qualityIndex < m_qualList.size()) {
         return qualityIndex;
@@ -79,7 +79,7 @@ int EncoderOpusSettings::getQualityIndex() const {
         kLogger.warning() << "Invalid qualityIndex in EncoderVorbisSettings "
                           << qualityIndex << "(Max is:"
                           << m_qualList.size() << ") . Ignoring it and"
-                          << "returning default which is" << kDefaultBitrateIndex;
-        return kDefaultBitrateIndex;
+                          << "returning default which is" << kDefaultQualityIndex;
+        return kDefaultQualityIndex;
     }
 }

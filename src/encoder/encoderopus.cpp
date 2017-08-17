@@ -71,6 +71,19 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
 
     if (samplerate != 48000) {
         kLogger.warning() << "initEncoder failed: samplerate not supported by Opus";
+
+        QString invalidSamplerate = QObject::tr(
+                "Recording at samplerates other than 48 kHz "
+                "is not supported by the Opus encoder. Please use "
+                "48000 Hz in \"Sound Hardware\" preferences "
+                "or switch to a different recording format.");
+
+        ErrorDialogProperties* props = ErrorDialogHandler::instance()->newDialogProperties();
+        props->setType(DLG_WARNING);
+        props->setTitle(QObject::tr("Encoder"));
+        props->setText(invalidSamplerate);
+        props->setKey(invalidSamplerate);
+        ErrorDialogHandler::instance()->requestErrorDialog(props);
         return -1;
     }
 
@@ -357,33 +370,46 @@ void EncoderOpus::flush() {
 }
 
 QString EncoderOpus::opusErrorString(int error) {
+    QString errorString = "";
     switch (error) {
         case OPUS_OK:
-            return "OPUS_OK";
+            errorString = "OPUS_OK";
+            break;
         case OPUS_BAD_ARG:
-            return "OPUS_BAD_ARG";
+            errorString = "OPUS_BAD_ARG";
+            break;
         case OPUS_BUFFER_TOO_SMALL:
-            return "OPUS_BUFFER_TOO_SMALL";
+            errorString = "OPUS_BUFFER_TOO_SMALL";
+            break;
         case OPUS_INTERNAL_ERROR:
-            return "OPUS_INTERNAL_ERROR";
+            errorString = "OPUS_INTERNAL_ERROR";
+            break;
         case OPUS_INVALID_PACKET:
-            return "OPUS_INVALID_PACKET";
+            errorString = "OPUS_INVALID_PACKET";
+            break;
         case OPUS_UNIMPLEMENTED:
-            return "OPUS_UNIMPLEMENTED";
+            errorString = "OPUS_UNIMPLEMENTED";
+            break;
         case OPUS_INVALID_STATE:
-            return "OPUS_INVALID_STATE";
+            errorString = "OPUS_INVALID_STATE";
+            break;
         case OPUS_ALLOC_FAIL:
-            return "OPUS_ALLOC_FAIL";
+            errorString = "OPUS_ALLOC_FAIL";
+            break;
         default:
             return "Unknown error";
     }
+    return errorString + (QString(" (%1)").arg(error));
 }
 
 int EncoderOpus::getSerial() {
     static int prevSerial = 0;
-    int serial = rand();
-    while (prevSerial == serial)
+
+    int serial;
+    do {
         serial = rand();
+    } while(prevSerial == serial);
+
     prevSerial = serial;
     kLogger.debug() << "RETURNING SERIAL " << serial;
     return serial;

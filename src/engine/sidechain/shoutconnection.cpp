@@ -336,7 +336,7 @@ void ShoutConnection::updateFromPreferences() {
 
     int iMasterSamplerate = m_pMasterSamplerate->get();
     if (m_format_is_ov && iMasterSamplerate == 96000) {
-        errorDialog(tr("Broadcasting at 96kHz with Ogg Vorbis is not currently "
+        errorDialog(tr("Broadcasting at 96 kHz with Ogg Vorbis is not currently "
                        "supported. Please try a different sample-rate or switch "
                        "to a different encoding."),
                     tr("See https://bugs.launchpad.net/mixxx/+bug/686212 for more "
@@ -345,9 +345,10 @@ void ShoutConnection::updateFromPreferences() {
     }
 
     if(m_format_is_opus && iMasterSamplerate != 48000) {
-        errorDialog(tr("Broadcasting at samplerates other than 48kHz "
+        errorDialog(tr("Broadcasting at samplerates other than 48 kHz "
                        "is not supported by the Opus encoder. Please use "
-                       "48kHz or switch to a different encoding."),
+                       "48000 Hz in \"Sound Hardware\" preferences "
+                       "or switch to a different encoding."),
                     tr("Unsupported samplerate"));
         return;
     }
