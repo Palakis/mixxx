@@ -7,7 +7,7 @@
 #include "encoder/encoderfdkaacsettings.h"
 
 namespace {
-const int kDefaultBitrateIndex = 6;
+const int kDefaultQualityIndex = 6;
 const char* kQualityKey = "FdkAac_Quality";
 const mixxx::Logger kLogger("EncoderFdkAacSettings");
 }
@@ -63,15 +63,15 @@ int EncoderFdkAacSettings::getQuality() const {
 
 int EncoderFdkAacSettings::getQualityIndex() const {
     int qualityIndex = m_pConfig->getValue(
-            ConfigKey(RECORDING_PREF_KEY, kQualityKey), kDefaultBitrateIndex);
+            ConfigKey(RECORDING_PREF_KEY, kQualityKey), kDefaultQualityIndex);
     if (qualityIndex >= 0 && qualityIndex < m_qualList.size()) {
         return qualityIndex;
     } else {
         kLogger.warning()
                 << "Invalid qualityIndex:"
                 << qualityIndex << "(Max is:" << m_qualList.size() << "). Ignoring it"
-                << "and returning default, which is:" << kDefaultBitrateIndex;
+                << "and returning default, which is:" << kDefaultQualityIndex;
     }
-    return kDefaultBitrateIndex;
+    return kDefaultQualityIndex;
 }
 
