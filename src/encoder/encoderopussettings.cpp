@@ -25,6 +25,7 @@ EncoderOpusSettings::EncoderOpusSettings(UserSettingsPointer pConfig)
     m_qualList.append(224);
     m_qualList.append(256);
     m_qualList.append(320);
+    m_qualList.append(510); // Max Opus bitrate
 }
 
 EncoderOpusSettings::~EncoderOpusSettings() {
