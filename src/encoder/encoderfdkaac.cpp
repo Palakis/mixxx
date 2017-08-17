@@ -55,7 +55,7 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, const char* pFormat)
     libnames << "libfdk-aac-1.dll";
 
     QString buttFdkAacPath = buttWindowsFdkAac();
-    if(!buttPath.isNull()) {
+    if(!buttFdkAacPath.isNull()) {
         libnames << buttFdkAacPath;
     }
 #elif __APPLE__
