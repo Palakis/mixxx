@@ -246,11 +246,17 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
     // Input audio channel order (fixed to 1 for traditional WAVE ordering: L, R, ...)
     aacEncoder_SetParam(m_aacEnc, AACENC_CHANNELORDER, 1);
 
-    // Output bitrate in bytes per seconds
+    // Output bitrate in bits per second
+    // m_bitrate is in kilobits per second, conversion needed
     aacEncoder_SetParam(m_aacEnc, AACENC_BITRATE, m_bitrate * 1000);
     // Transport type (2 = ADTS)
     aacEncoder_SetParam(m_aacEnc, AACENC_TRANSMUX, 2);
-    // Afterburner enabled
+    // Enable the AAC Afterburner, which increases audio quality
+    // at the cost of increased CPU and memory usage.
+    // Fraunhofer recommends to enable this if increased CPU and memory
+    // consumption is not a problem.
+    // TODO(Palakis): is this an issue even with 12-year old computers
+    // and notebooks?
     aacEncoder_SetParam(m_aacEnc, AACENC_AFTERBURNER, 1);
 
     // Actual encoder init, validates settings provided above
