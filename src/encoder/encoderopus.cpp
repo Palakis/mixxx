@@ -77,7 +77,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     }
 
     // Optimize encoding for high-quality music
-    opus_encoder_ctl(m_pOpus, OPUS_SET_COMPLEXITY(10));
+    opus_encoder_ctl(m_pOpus, OPUS_SET_COMPLEXITY(10)); // Highest setting
     opus_encoder_ctl(m_pOpus, OPUS_SET_SIGNAL(OPUS_SIGNAL_MUSIC));
 
     // TODO(Palakis): use constant or have the engine provide that value
