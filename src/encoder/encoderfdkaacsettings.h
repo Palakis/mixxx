@@ -24,7 +24,7 @@ class EncoderFdkAacSettings: public EncoderSettings {
     }
     // Indicates that it uses the radio button section of the preferences.
     bool usesOptionGroups() const override {
-        return true;
+        return false;
     }
 
     // Returns the list of quality values that it supports, to assign them to the slider

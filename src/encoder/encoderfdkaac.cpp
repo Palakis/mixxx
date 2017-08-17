@@ -45,6 +45,15 @@ EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, QString pFormat)
         // MPEG-4 HE-AAC
         m_aacAot = AOT_SBR;
     }
+    else if (pFormat == ENCODING_HEAACV2) {
+        // MPEG-4 HE-AACv2
+        m_aacAot = AOT_PS;
+    }
+    else {
+        // Fallback to AAC-LC in case
+        // of unknown value
+        m_aacAot = AOT_AAC_LC;
+    }
 
     // Load shared library
     // Code import from encodermp3.cpp
