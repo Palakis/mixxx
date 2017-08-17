@@ -46,8 +46,8 @@ EncoderFactory::EncoderFactory() {
     m_formats.append(Encoder::Format("FLAC", ENCODING_FLAC, true));
     m_formats.append(Encoder::Format("MP3",ENCODING_MP3, false));
     m_formats.append(Encoder::Format("OGG Vorbis",ENCODING_OGG, false));
-    m_formats.append(Encoder::Format("AAC",ENCODING_AAC, false));
-    m_formats.append(Encoder::Format("HE-AAC",ENCODING_HEAAC, false));
+    m_formats.append(Encoder::Format("AAC",ENCODING_AAC, false, "m4a"));
+    m_formats.append(Encoder::Format("HE-AAC",ENCODING_HEAAC, false, "m4a"));
 }
 
 const QList<Encoder::Format> EncoderFactory::getFormats() const
