@@ -188,7 +188,6 @@ EncoderFdkAac::~EncoderFdkAac() {
         delete m_pInputFifo;
 }
 
-// TODO(Palakis): test this on Windows
 QString EncoderFdkAac::buttWindowsFdkAac() {
     // Return %APPDATA%/Local path
     QString appData = QDesktopServices::storageLocation(
