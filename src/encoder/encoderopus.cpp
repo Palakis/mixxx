@@ -127,7 +127,7 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     m_pFifoBuffer = new FIFO<CSAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE);
 
     double samplingPeriodMs = (1.0/((float)m_samplerate)) * 1000.0;
-    double samplesPerChannel = samplingPeriodMs * kOpusFrameMs;
+    double samplesPerChannel = kOpusFrameMs / samplingPeriodMs;
 
     m_readRequired = samplesPerChannel * m_channels;
     m_pFifoChunkBuffer = new CSAMPLE[m_readRequired * sizeof(CSAMPLE)]();
