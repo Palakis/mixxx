@@ -227,11 +227,8 @@ void EncoderOpus::pushTagsPacket() {
     while(iter.hasNext()) {
         iter.next();
         QString comment = iter.key() + "=" + iter.value();
-
-        // Convert comment to raw UTF-8 data;
-        const char* commentData = comment.toUtf8().constData();
-        int commentDataLength = strlen(commentData);
-        QByteArray commentBytes(commentData, commentDataLength);
+        QByteArray commentBytes = comment.toUtf8();
+        int commentBytesLength = commentBytes.size();
 
         // One comment is:
         // - 4 bytes of string length
@@ -239,13 +236,13 @@ void EncoderOpus::pushTagsPacket() {
 
         // Add comment length field and data to comments "list"
         for (int x = 0; x < 4; x++) {
-            unsigned char fieldValue = (commentDataLength >> (x*8)) & 0xFF;
+            unsigned char fieldValue = (commentBytesLength >> (x*8)) & 0xFF;
             combinedComments.append(fieldValue);
         }
-        combinedComments.append(commentBytes);
+        combinedComments.append(commentBytesLength);
 
         // Don't forget to include this comment in the overall size calculation
-        frameSize += (4 + strlen(comment.toUtf8().constData()));
+        frameSize += (4 + commentBytesLength);
         commentCount++;
     }
 
@@ -315,7 +312,6 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 
 void EncoderOpus::processFIFO() {
     while (m_pFifoBuffer->readAvailable() >= kReadRequired) {
-        memset(m_pFifoChunkBuffer, 0, kReadRequired * sizeof(CSAMPLE));
         m_pFifoBuffer->read(m_pFifoChunkBuffer, kReadRequired);
 
         int samplesPerChannel = kReadRequired / m_channels;
