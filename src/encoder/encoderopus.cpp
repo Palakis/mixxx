@@ -43,14 +43,10 @@ EncoderOpus::~EncoderOpus() {
     if (m_pOpus)
         opus_encoder_destroy(m_pOpus);
 
-    if (m_pFifoChunkBuffer)
-        delete m_pFifoChunkBuffer;
-
-    if (m_pFifoBuffer)
-        delete m_pFifoBuffer;
-
     ogg_stream_clear(&m_oggStream);
-    delete m_pOpusDataBuffer;
+    delete[] m_pOpusDataBuffer;
+    delete m_pFifoChunkBuffer;
+    delete m_pFifoBuffer;
 }
 
 void EncoderOpus::setEncoderSettings(const EncoderSettings& settings) {
@@ -119,12 +115,13 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
         opus_encoder_ctl(m_pOpus, OPUS_SET_VBR_CONSTRAINT(0)); // Unconstrained VBR
     }
 
-    // Size the input FIFO buffer with the maximum possible sample count that can be
-    // processed at once, to avoid waiting for the required sample count and encode at a regular pace.
+    // Size the input FIFO buffer with twice the maximum possible sample count that can be
+    // processed at once, to avoid skipping frames or waiting for the required sample count
+    // and encode at a regular pace.
     // This is set to the buffer size of the sidechain engine because
     // Recording (which uses this engine) sends more samples at once to the encoder than
     // the Live Broadcasting implementation
-    m_pFifoBuffer = new FIFO<CSAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE);
+    m_pFifoBuffer = new FIFO<CSAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE * 2);
 
     double samplingPeriodMs = (1.0/((float)m_samplerate)) * 1000.0;
     double samplesPerChannel = kOpusFrameMs / samplingPeriodMs;
@@ -208,7 +205,7 @@ void EncoderOpus::pushHeaderPacket() {
     packet.bytes = frameSize;
 
     ogg_stream_packetin(&m_oggStream, &packet);
-    delete data;
+    delete[] data;
 }
 
 void EncoderOpus::pushTagsPacket() {
@@ -291,7 +288,7 @@ void EncoderOpus::pushTagsPacket() {
     kLogger.debug() << data;
 
     ogg_stream_packetin(&m_oggStream, &packet);
-    delete data;
+    delete[] data;
 }
 
 void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
