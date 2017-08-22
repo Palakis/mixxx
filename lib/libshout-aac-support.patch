@@ -1,6 +1,5 @@
-diff -Naur libshout-2.3.1/include/shout/shout.h.in libshout-2.3.1-modified/include/shout/shout.h.in
---- libshout-2.3.1/include/shout/shout.h.in	2012-02-01 22:02:18.000000000 +0100
-+++ libshout-2.3.1-modified/include/shout/shout.h.in	2017-08-22 21:41:46.486930999 +0200
+--- include/shout/shout.h.in
++++ include/shout/shout.h.in
 @@ -42,6 +42,7 @@
  #define SHOUT_FORMAT_OGG	(0)
  #define SHOUT_FORMAT_MP3	(1)
@@ -8,10 +7,9 @@ diff -Naur libshout-2.3.1/include/shout/shout.h.in libshout-2.3.1-modified/inclu
 +#define SHOUT_FORMAT_AAC    (3)
  /* backward-compatibility alias */
  #define SHOUT_FORMAT_VORBIS	SHOUT_FORMAT_OGG
- 
-diff -Naur libshout-2.3.1/src/aac.c libshout-2.3.1-modified/src/aac.c
---- libshout-2.3.1/src/aac.c	1970-01-01 01:00:00.000000000 +0100
-+++ libshout-2.3.1-modified/src/aac.c	2017-08-22 21:42:18.346992999 +0200
+
+--- src/aac.c
++++ src/aac.c
 @@ -0,0 +1,237 @@
 +/* -*- c-basic-offset: 8; -*- */
 +/* aac.c: libshout AAC format handler
@@ -250,9 +248,8 @@ diff -Naur libshout-2.3.1/src/aac.c libshout-2.3.1-modified/src/aac.c
 +}
 +
 +
-diff -Naur libshout-2.3.1/src/Makefile.am libshout-2.3.1-modified/src/Makefile.am
---- libshout-2.3.1/src/Makefile.am	2012-05-24 20:19:57.000000000 +0200
-+++ libshout-2.3.1-modified/src/Makefile.am	2017-08-22 21:41:55.874234999 +0200
+--- src/Makefile.am
++++ src/Makefile.am
 @@ -22,7 +22,7 @@
  
  EXTRA_DIST = theora.c speex.c
@@ -262,9 +259,8 @@ diff -Naur libshout-2.3.1/src/Makefile.am libshout-2.3.1-modified/src/Makefile.a
  AM_CFLAGS = @XIPH_CFLAGS@
  
  libshout_la_LIBADD = net/libicenet.la timing/libicetiming.la avl/libiceavl.la\
-diff -Naur libshout-2.3.1/src/shout.c libshout-2.3.1-modified/src/shout.c
---- libshout-2.3.1/src/shout.c	2012-05-24 22:25:35.000000000 +0200
-+++ libshout-2.3.1-modified/src/shout.c	2017-08-22 21:46:36.050076999 +0200
+--- src/shout.c
++++ src/shout.c
 @@ -728,7 +728,8 @@
  
  	if (format != SHOUT_FORMAT_OGG
@@ -294,9 +290,8 @@ diff -Naur libshout-2.3.1/src/shout.c libshout-2.3.1-modified/src/shout.c
  		if (queue_printf(self, "ice-name: %s\r\n", self->name ? self->name : "no name"))
  			break;
  		if (queue_printf(self, "ice-public: %d\r\n", self->public))
-diff -Naur libshout-2.3.1/src/shout_private.h libshout-2.3.1-modified/src/shout_private.h
---- libshout-2.3.1/src/shout_private.h	2012-02-02 01:16:37.000000000 +0100
-+++ libshout-2.3.1-modified/src/shout_private.h	2017-08-22 21:41:17.165598999 +0200
+--- src/shout_private.h
++++ src/shout_private.h
 @@ -109,5 +109,6 @@
  
  int shout_open_ogg(shout_t *self);
