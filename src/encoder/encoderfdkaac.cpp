@@ -348,8 +348,6 @@ void EncoderFdkAac::processFIFO() {
     }
 
     while (m_pInputFifo->readAvailable() >= m_readRequired) {
-        memset(m_pFifoChunkBuffer, 0,
-                m_readRequired * sizeof(SAMPLE));
         m_pInputFifo->read(m_pFifoChunkBuffer, m_readRequired);
 
         // fdk-aac only accept pointers for most buffer settings.
@@ -361,7 +359,6 @@ void EncoderFdkAac::processFIFO() {
         int outElemSize = sizeof(unsigned char);
         int outDataSize = kOutBufferBits * m_channels * outElemSize;
         int outDataDescription = OUT_BITSTREAM_DATA;
-        memset(m_pAacDataBuffer, 0, outDataSize);
 
         // === Input Buffer ===
         AACENC_BufDesc inputBuf;
