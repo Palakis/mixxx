@@ -9,6 +9,7 @@
 #include "recording/defs_recording.h"
 #include "util/logger.h"
 #include "util/sample.h"
+#include "engine/sidechain/enginesidechain.h"
 
 #include "encoder/encoderfdkaac.h"
 
@@ -302,8 +303,15 @@ int EncoderFdkAac::initEncoder(int samplerate, QString errorMessage) {
 
     aacEncInfo(m_aacEnc, &m_aacInfo);
     m_readRequired = m_aacInfo.frameLength * m_channels;
-    // TODO(Palakis): use constant or get value from engine
-    m_pInputFifo = new FIFO<SAMPLE>(57344 * 2);
+
+    // Size the input FIFO buffer with twice the maximum possible sample count that can be
+    // processed at once, to avoid skipping frames or waiting for the required sample count
+    // and encode at a regular pace.
+    // This is set to the buffer size of the sidechain engine because
+    // Recording (which uses this engine) sends more samples at once to the encoder than
+    // the Live Broadcasting implementation
+    m_pInputFifo = new FIFO<SAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE * 2);
+
     m_pFifoChunkBuffer = new SAMPLE[m_readRequired * sizeof(SAMPLE)]();
     return 0;
 }
