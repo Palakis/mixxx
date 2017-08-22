@@ -241,7 +241,7 @@ void EncoderOpus::pushTagsPacket() {
             unsigned char fieldValue = (commentBytesLength >> (x*8)) & 0xFF;
             combinedComments.append(fieldValue);
         }
-        combinedComments.append(commentBytesLength);
+        combinedComments.append(commentBytes);
 
         // Don't forget to include this comment in the overall size calculation
         frameSize += (4 + commentBytesLength);
