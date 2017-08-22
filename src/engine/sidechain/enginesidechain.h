@@ -42,6 +42,7 @@ class EngineSideChain : public QThread {
     // Thread-safe, blocking.
     void addSideChainWorker(SideChainWorker* pWorker);
 
+    static const int SIDECHAIN_BUFFER_SIZE = 65536;
   private:
     void run();
 
