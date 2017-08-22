@@ -5,6 +5,7 @@
 #include <QMapIterator>
 
 #include "encoder/encoderopussettings.h"
+#include "engine/sidechain/enginesidechain.h"
 #include "util/logger.h"
 
 #include "encoder/encoderopus.h"
@@ -117,8 +118,13 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
         opus_encoder_ctl(m_pOpus, OPUS_SET_VBR_CONSTRAINT(0)); // Unconstrained VBR
     }
 
-    // TODO(Palakis): use constant or have the engine provide that value
-    m_pFifoBuffer = new FIFO<CSAMPLE>(57344 * 2);
+    // Size the input FIFO buffer with the maximum possible sample count that can be
+    // processed at once, to avoid waiting for the required sample count and encode at a regular pace.
+    // This is set to the buffer size of the sidechain engine because
+    // Recording (which uses this engine) sends more samples at once to the encoder than
+    // the Live Broadcasting implementation
+    m_pFifoBuffer = new FIFO<CSAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE);
+
     m_pFifoChunkBuffer = new CSAMPLE[kChannelSamplesPerFrame * 2 * sizeof(CSAMPLE)]();
     initStream();
 
