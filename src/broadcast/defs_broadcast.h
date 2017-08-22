@@ -25,6 +25,9 @@
 
 #define BROADCAST_FORMAT_MP3 "MP3"
 #define BROADCAST_FORMAT_OV "OggVorbis"
+#define BROADCAST_FORMAT_AAC "AAC"
+#define BROADCAST_FORMAT_HEAAC "HEAAC"
+#define BROADCAST_FORMAT_HEAACV2 "HEAACV2"
 
 // EngineNetworkStream can't use locking mechanisms to protect its
 // internal worker list against concurrency issues, as it is used by
