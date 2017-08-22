@@ -15,8 +15,8 @@ namespace {
 // 1 byte TOC + maximum frame size (1275)
 // See https://tools.ietf.org/html/rfc6716#section-3.2
 const int kMaxOpusBufferSize = 1+1275;
-// Opus frame duration in milliseconds. Fixed to 20ms
-const int kOpusFrameMs = 20;
+// Opus frame duration in milliseconds. Fixed to 60ms
+const int kOpusFrameMs = 60;
 
 const mixxx::Logger kLogger("EncoderOpus");
 }
