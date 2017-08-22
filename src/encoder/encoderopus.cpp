@@ -15,9 +15,9 @@ namespace {
 // 1 byte TOC + maximum frame size (1275)
 // See https://tools.ietf.org/html/rfc6716#section-3.2
 const int kMaxOpusBufferSize = 1+1275;
+// Opus frame duration in milliseconds. Fixed to 20ms
+const int kOpusFrameMs = 20;
 
-// Opus' accepted sample size for 48khz
-const int kChannelSamplesPerFrame = 1920;
 const mixxx::Logger kLogger("EncoderOpus");
 }
 
@@ -126,7 +126,10 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     // the Live Broadcasting implementation
     m_pFifoBuffer = new FIFO<CSAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE);
 
-    m_readRequired = kChannelSamplesPerFrame * m_channels;
+    double samplingPeriodMs = (1.0/((float)m_samplerate)) * 1000.0;
+    double samplesPerChannel = samplingPeriodMs * kOpusFrameMs;
+
+    m_readRequired = samplesPerChannel * m_channels;
     m_pFifoChunkBuffer = new CSAMPLE[m_readRequired * sizeof(CSAMPLE)]();
     initStream();
 
