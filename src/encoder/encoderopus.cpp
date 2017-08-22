@@ -16,8 +16,8 @@ namespace {
 // See https://tools.ietf.org/html/rfc6716#section-3.2
 const int kMaxOpusBufferSize = 1+1275;
 
-const int kChannelSamplesPerFrame = 1920; // Opus' accepted sample size for 48khz
-const int kReadRequired = kChannelSamplesPerFrame * 2;
+// Opus' accepted sample size for 48khz
+const int kChannelSamplesPerFrame = 1920;
 const mixxx::Logger kLogger("EncoderOpus");
 }
 
@@ -26,6 +26,7 @@ EncoderOpus::EncoderOpus(EncoderCallback* pCallback)
       m_bitrateMode(0),
       m_channels(0),
       m_samplerate(0),
+	  m_readRequired(0),
       m_pCallback(pCallback),
       m_pFifoBuffer(nullptr),
       m_pFifoChunkBuffer(nullptr),
@@ -125,7 +126,8 @@ int EncoderOpus::initEncoder(int samplerate, QString errorMessage) {
     // the Live Broadcasting implementation
     m_pFifoBuffer = new FIFO<CSAMPLE>(EngineSideChain::SIDECHAIN_BUFFER_SIZE);
 
-    m_pFifoChunkBuffer = new CSAMPLE[kChannelSamplesPerFrame * 2 * sizeof(CSAMPLE)]();
+    m_readRequired = kChannelSamplesPerFrame * m_channels;
+    m_pFifoChunkBuffer = new CSAMPLE[m_readRequired * sizeof(CSAMPLE)]();
     initStream();
 
     return 0;
@@ -311,10 +313,10 @@ void EncoderOpus::encodeBuffer(const CSAMPLE *samples, const int size) {
 }
 
 void EncoderOpus::processFIFO() {
-    while (m_pFifoBuffer->readAvailable() >= kReadRequired) {
-        m_pFifoBuffer->read(m_pFifoChunkBuffer, kReadRequired);
+    while (m_pFifoBuffer->readAvailable() >= m_readRequired) {
+        m_pFifoBuffer->read(m_pFifoChunkBuffer, m_readRequired);
 
-        int samplesPerChannel = kReadRequired / m_channels;
+        int samplesPerChannel = m_readRequired / m_channels;
         int result = opus_encode_float(m_pOpus, m_pFifoChunkBuffer, samplesPerChannel,
                 m_pOpusDataBuffer, kMaxOpusBufferSize);
 

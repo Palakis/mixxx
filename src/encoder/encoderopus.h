@@ -39,6 +39,7 @@ class EncoderOpus: public Encoder {
     int m_bitrateMode;
     int m_channels;
     int m_samplerate;
+    int m_readRequired;
     EncoderCallback* m_pCallback;
     FIFO<CSAMPLE>* m_pFifoBuffer;
     CSAMPLE* m_pFifoChunkBuffer;
