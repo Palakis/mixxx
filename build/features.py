@@ -896,7 +896,9 @@ class Opus(Feature):
             build.env.ParseConfig('pkg-config opusfile opus --silence-errors --cflags --libs')
 
     def sources(self, build):
-        return ['sources/soundsourceopus.cpp']
+        return ['sources/soundsourceopus.cpp',
+                'encoder/encoderopus.cpp',
+                'encoder/encoderopussettings.cpp']
 
 
 class FFMPEG(Feature):
