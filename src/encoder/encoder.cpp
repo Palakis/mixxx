@@ -27,6 +27,9 @@
 #include "encoder/encoderwavesettings.h"
 #include "encoder/encoderflacsettings.h"
 
+#include "encoder/encoderfdkaac.h"
+#include "encoder/encoderfdkaacsettings.h"
+
 #include <QList>
 
 EncoderFactory EncoderFactory::factory;
@@ -43,6 +46,9 @@ EncoderFactory::EncoderFactory() {
     m_formats.append(Encoder::Format("FLAC", ENCODING_FLAC, true));
     m_formats.append(Encoder::Format("MP3",ENCODING_MP3, false));
     m_formats.append(Encoder::Format("OGG Vorbis",ENCODING_OGG, false));
+    m_formats.append(Encoder::Format("AAC",ENCODING_AAC, false, "m4a"));
+    m_formats.append(Encoder::Format("HE-AAC",ENCODING_HEAAC, false, "m4a"));
+    m_formats.append(Encoder::Format("HE-AACv2",ENCODING_HEAACV2, false, "m4a"));
 }
 
 const QList<Encoder::Format> EncoderFactory::getFormats() const
@@ -99,6 +105,11 @@ EncoderPointer EncoderFactory::getNewEncoder(Encoder::Format format,
         pEncoder = std::make_shared<EncoderVorbis>(pCallback);
         #endif
         pEncoder->setEncoderSettings(EncoderVorbisSettings(pConfig));
+    } else if (format.internalName == ENCODING_AAC ||
+            format.internalName == ENCODING_HEAAC ||
+            format.internalName == ENCODING_HEAACV2) {
+        pEncoder = std::make_shared<EncoderFdkAac>(pCallback, format.internalName);
+        pEncoder->setEncoderSettings(EncoderFdkAacSettings(pConfig));
     } else {
         qWarning() << "Unsupported format requested! " << format.internalName;
         DEBUG_ASSERT(false);
@@ -121,6 +132,10 @@ EncoderSettingsPointer EncoderFactory::getEncoderSettings(Encoder::Format format
         return std::make_shared<EncoderMp3Settings>(pConfig);
     } else if (format.internalName == ENCODING_OGG) {
         return std::make_shared<EncoderVorbisSettings>(pConfig);
+    } else if (format.internalName == ENCODING_AAC ||
+            format.internalName == ENCODING_HEAAC ||
+            format.internalName == ENCODING_HEAACV2) {
+        return std::make_shared<EncoderFdkAacSettings>(pConfig);
     } else {
         qWarning() << "Unsupported format requested! " << format.internalName;
         DEBUG_ASSERT(false);

@@ -58,6 +58,7 @@ ShoutConnection::ShoutConnection(BroadcastProfilePtr profile,
           m_firstCall(false),
           m_format_is_mp3(false),
           m_format_is_ov(false),
+          m_format_is_aac(false),
           m_protocol_is_icecast1(false),
           m_protocol_is_icecast2(false),
           m_protocol_is_shoutcast(false),
@@ -169,6 +170,7 @@ void ShoutConnection::updateFromPreferences() {
 
     m_format_is_mp3 = false;
     m_format_is_ov = false;
+    m_format_is_aac = false;
     m_protocol_is_icecast1 = false;
     m_protocol_is_icecast2 = false;
     m_protocol_is_shoutcast = false;
@@ -315,10 +317,16 @@ void ShoutConnection::updateFromPreferences() {
 
     m_format_is_mp3 = !qstrcmp(baFormat.constData(), BROADCAST_FORMAT_MP3);
     m_format_is_ov = !qstrcmp(baFormat.constData(), BROADCAST_FORMAT_OV);
+    m_format_is_aac = ((
+                    !qstrcmp(baFormat.constData(), BROADCAST_FORMAT_AAC)) ||
+                    !qstrcmp(baFormat.constData(), BROADCAST_FORMAT_HEAAC) ||
+                    !qstrcmp(baFormat.constData(), BROADCAST_FORMAT_HEAACV2));
     if (m_format_is_mp3) {
         format = SHOUT_FORMAT_MP3;
     } else if (m_format_is_ov) {
         format = SHOUT_FORMAT_OGG;
+    } else if (m_format_is_aac) {
+        format = SHOUT_FORMAT_AAC;
     } else {
         qWarning() << "Error: unknown format:" << baFormat.constData();
         return;
@@ -385,6 +393,20 @@ void ShoutConnection::updateFromPreferences() {
     } else if (m_format_is_ov) {
         m_encoder = EncoderFactory::getFactory().getNewEncoder(
             EncoderFactory::getFactory().getFormatFor(ENCODING_OGG), m_pConfig, this);
+        m_encoder->setEncoderSettings(broadcastSettings);
+    } else if (m_format_is_aac) {
+        QString broadcastFormat = baFormat;
+        QString encoderFormat = BROADCAST_FORMAT_AAC;
+        if(broadcastFormat == BROADCAST_FORMAT_AAC) {
+            encoderFormat = ENCODING_AAC;
+        } else if(broadcastFormat == BROADCAST_FORMAT_HEAAC) {
+            encoderFormat = ENCODING_HEAAC;
+        } else if(broadcastFormat == BROADCAST_FORMAT_HEAACV2) {
+            encoderFormat = ENCODING_HEAACV2;
+        }
+
+        m_encoder = EncoderFactory::getFactory().getNewEncoder(
+                EncoderFactory::getFactory().getFormatFor(encoderFormat), m_pConfig, this);
         m_encoder->setEncoderSettings(broadcastSettings);
     } else {
         kLogger.warning() << "**** Unknown Encoder Format";
