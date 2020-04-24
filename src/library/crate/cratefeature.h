@@ -1,6 +1,4 @@
-#ifndef MIXXX_CRATEFEATURE_H
-#define MIXXX_CRATEFEATURE_H
-
+#pragma once
 
 #include <QModelIndex>
 #include <QList>
@@ -9,10 +7,11 @@
 #include <QUrl>
 #include <QIcon>
 #include <QPoint>
+#include <QPointer>
 
+#include "library/crate/cratestorage.h"
 #include "library/crate/cratetablemodel.h"
-
-#include "library/libraryfeature.h"
+#include "library/basetracksetfeature.h"
 #include "library/treeitemmodel.h"
 
 #include "track/track.h"
@@ -23,16 +22,14 @@
 
 // forward declaration(s)
 class Library;
-class TrackCollection;
+class WLibrarySidebar;
 
-
-class CrateFeature : public LibraryFeature {
+class CrateFeature : public BaseTrackSetFeature {
     Q_OBJECT
   public:
     CrateFeature(Library* pLibrary,
-                 TrackCollection* pTrackCollection,
                  UserSettingsPointer pConfig);
-    ~CrateFeature() override;
+    ~CrateFeature() override = default;
 
     QVariant title() override;
     QIcon getIcon() override;
@@ -41,16 +38,13 @@ class CrateFeature : public LibraryFeature {
                          QObject* pSource) override;
     bool dragMoveAcceptChild(const QModelIndex& index, QUrl url) override;
 
-    void bindWidget(WLibrary* libraryWidget,
+    void bindLibraryWidget(WLibrary* libraryWidget,
                     KeyboardEventFilter* keyboard) override;
+    void bindSidebarWidget(WLibrarySidebar* pSidebarWidget) override;
 
     TreeItemModel* getChildModel() override;
 
-  signals:
-    void analyzeTracks(QList<TrackId>);
-
   public slots:
-    void activate() override;
     void activateChild(const QModelIndex& index) override;
     void onRightClick(const QPoint& globalPos) override;
     void onRightClickChild(const QPoint& globalPos, QModelIndex index) override;
@@ -102,7 +96,7 @@ class CrateFeature : public LibraryFeature {
     const QIcon m_cratesIcon;
     const QIcon m_lockedCrateIcon;
 
-    TrackCollection* m_pTrackCollection;
+    TrackCollection* const m_pTrackCollection;
 
     CrateTableModel m_crateTableModel;
     TreeItemModel m_childModel;
@@ -121,7 +115,6 @@ class CrateFeature : public LibraryFeature {
     parented_ptr<QAction> m_pExportPlaylistAction;
     parented_ptr<QAction> m_pExportTrackFilesAction;
     parented_ptr<QAction> m_pAnalyzeCrateAction;
+
+    QPointer<WLibrarySidebar> m_pSidebarWidget;
 };
-
-
-#endif // MIXXX_CRATEFEATURE_H

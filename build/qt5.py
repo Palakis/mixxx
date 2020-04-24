@@ -34,6 +34,7 @@ selection method.
 
 import os.path
 import re
+import subprocess
 import sys
 
 import SCons.Action
@@ -207,7 +208,8 @@ class _Automoc:
             
             # Now, check whether the corresponding CPP file
             # includes the moc'ed output directly...
-            inc_moc_cpp = r'^\s*#\s*include\s+"%s"' % str(moc_cpp[0])
+            inc_path_removed = os.path.split(str(moc_cpp[0]))[1]
+            inc_moc_cpp = r'^\s*#\s*include\s+"%s"' % inc_path_removed
             if cpp and re.search(inc_moc_cpp, cpp_contents, re.M):
                 if moc_options['debug']:
                     print("scons: qt5: CXX file '%s' directly includes the moc'ed output '%s', no compiling required" % (str(cpp), str(moc_cpp)))
@@ -543,16 +545,15 @@ def _find_qtdirs(qt5dir, module):
     QT5INCDIR = os.path.join(qt5dir,"includedir")
     if sys.platform.startswith('linux'):
         if any(os.access(os.path.join(path, 'pkg-config'), os.X_OK) for path in os.environ["PATH"].split(os.pathsep)):
-            import subprocess
             try:
                 if not module in ["Qt5DBus", "Qt5Assistant"]:
                     module5 = module.replace('Qt','Qt5')
                 else:
                     module5 = module
                 if not os.path.isdir(QT5LIBDIR):
-                    QT5LIBDIR = subprocess.Popen(["pkg-config", "--variable=libdir", module5], stdout = subprocess.PIPE).communicate()[0].rstrip().decode()
+                    QT5LIBDIR = subprocess.Popen(["pkg-config", "--variable=libdir", module5], stdout = subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
                 if not os.path.isdir(QT5INCDIR):
-                    QT5INCDIR = subprocess.Popen(["pkg-config", "--variable=includedir", module5], stdout = subprocess.PIPE).communicate()[0].rstrip().decode()
+                    QT5INCDIR = subprocess.Popen(["pkg-config", "--variable=includedir", module5], stdout = subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
             finally:
                 pass
     return QT5LIBDIR, QT5INCDIR, os.path.join(QT5INCDIR,module)

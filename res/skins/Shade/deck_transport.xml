@@ -1,7 +1,6 @@
 <Template>
   <WidgetGroup>
     <Size>243f,59f</Size>
-    <Style>QGroupBox { border: 0px solid red;} QWidget { margin: 0; padding: 0; }</Style>
     <Children>
         <!--
       **********************************************
@@ -10,7 +9,6 @@
       -->
       <PushButton>
         <TooltipId></TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -30,7 +28,6 @@
 
       <PushButton>
         <TooltipId>microphone_talkover</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -51,22 +48,21 @@
       </PushButton>
 
       <PushButton>
-        <TooltipId>mute</TooltipId>
-        <Style></Style>
+        <TooltipId>master_enable</TooltipId>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
           <Pressed>skin:/btn/btn_aux_mute_overdown.png</Pressed>
-          <Unpressed>skin:/btn/btn_aux_mute_over.png</Unpressed>
-        </State>				
+          <Unpressed>skin:/btn/btn_aux_mute.png</Unpressed>
+        </State>
         <State>
           <Number>1</Number>
           <Pressed>skin:/btn/btn_aux_mute_overdown.png</Pressed>
-          <Unpressed>skin:/btn/btn_aux_mute.png</Unpressed>
+          <Unpressed>skin:/btn/btn_aux_mute_over.png</Unpressed>
         </State>
         <Pos>5,35</Pos>
         <Connection>
-          <ConfigKey>[Auxiliary<Variable name="auxnum"/>],mute</ConfigKey>
+          <ConfigKey>[Auxiliary<Variable name="auxnum"/>],master</ConfigKey>
           <ButtonState>LeftButton</ButtonState>
         </Connection>
       </PushButton>
@@ -78,7 +74,6 @@
       -->
       <PushButton>
         <TooltipId>show_samplers</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -98,7 +93,6 @@
 
       <PushButton>
         <TooltipId>play_start</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -122,11 +116,10 @@
         <Connection>
           <ConfigKey>[Sampler<Variable name="samplernum1"/>],play_indicator</ConfigKey>
         </Connection>
-      </PushButton>	
+      </PushButton>
 
       <PushButton>
         <TooltipId>play_start</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -150,11 +143,10 @@
         <Connection>
           <ConfigKey>[Sampler<Variable name="samplernum2"/>],play_indicator</ConfigKey>
         </Connection>
-      </PushButton>	
+      </PushButton>
 
       <PushButton>
         <TooltipId>play_start</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -178,11 +170,10 @@
         <Connection>
           <ConfigKey>[Sampler<Variable name="samplernum3"/>],play_indicator</ConfigKey>
         </Connection>
-      </PushButton>	
+      </PushButton>
 
       <PushButton>
         <TooltipId>play_start</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -206,7 +197,7 @@
         <Connection>
           <ConfigKey>[Sampler<Variable name="samplernum4"/>],play_indicator</ConfigKey>
         </Connection>
-      </PushButton>	
+      </PushButton>
 
       <!--
       **********************************************
@@ -234,7 +225,6 @@
 
       <PushButton>
         <TooltipId>beatjump_forward</TooltipId>
-        <Style></Style>
         <NumberStates>1</NumberStates>
         <State>
           <Number>0</Number>
@@ -253,7 +243,6 @@
       </PushButton>
       <PushButton>
         <TooltipId>beatjump_backward</TooltipId>
-        <Style></Style>
         <NumberStates>1</NumberStates>
         <State>
           <Number>0</Number>
@@ -278,7 +267,6 @@
       -->
       <PushButton>
         <TooltipId>reverse</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <LeftClickIsPushButton>true</LeftClickIsPushButton>
         <State>
@@ -311,7 +299,6 @@
       -->
 
       <PushButton>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <State>
           <Number>0</Number>
@@ -336,7 +323,6 @@
       -->
       <PushButton>
         <TooltipId>beatloop_activate</TooltipId>
-        <Style></Style>
         <NumberStates>2</NumberStates>
         <LeftClickIsPushButton>true</LeftClickIsPushButton>
         <RightClickIsPushButton>true</RightClickIsPushButton>
@@ -368,7 +354,6 @@
       </PushButton>
       <PushButton>
         <TooltipId>reloop_toggle</TooltipId>
-        <Style></Style>
         <Pos>170,14</Pos>
         <NumberStates>2</NumberStates>
         <LeftClickIsPushButton>true</LeftClickIsPushButton>
@@ -402,7 +387,6 @@
 
       <PushButton>
         <TooltipId>loop_halve</TooltipId>
-        <Style></Style>
         <NumberStates>1</NumberStates>
         <State>
           <Number>0</Number>
@@ -418,7 +402,6 @@
       </PushButton>
       <PushButton>
         <TooltipId>loop_double</TooltipId>
-        <Style></Style>
         <NumberStates>1</NumberStates>
         <State>
           <Number>0</Number>
@@ -462,19 +445,19 @@
         <Pos>197,14</Pos>
         <Size>43f,43f</Size>
         <Children>
-          <Template src="skin:deck_hotcue_button.xml">
+          <Template src="skin:hotcue_button.xml">
             <SetVariable name="hotcue">1</SetVariable>
             <SetVariable name="pos">0,0</SetVariable>
           </Template>
-          <Template src="skin:deck_hotcue_button.xml">
+          <Template src="skin:hotcue_button.xml">
             <SetVariable name="hotcue">2</SetVariable>
             <SetVariable name="pos">21,0</SetVariable>
           </Template>
-          <Template src="skin:deck_hotcue_button.xml">
+          <Template src="skin:hotcue_button.xml">
             <SetVariable name="hotcue">3</SetVariable>
             <SetVariable name="pos">0,21</SetVariable>
           </Template>
-          <Template src="skin:deck_hotcue_button.xml">
+          <Template src="skin:hotcue_button.xml">
             <SetVariable name="hotcue">4</SetVariable>
             <SetVariable name="pos">21,21</SetVariable>
           </Template>
@@ -492,7 +475,6 @@
           <PushButton>
             <TooltipId>intro_start</TooltipId>
             <Pos>0,0</Pos>
-            <Style></Style>
             <NumberStates>2</NumberStates>
             <LeftClickIsPushButton>true</LeftClickIsPushButton>
             <RightClickIsPushButton>true</RightClickIsPushButton>
@@ -526,7 +508,6 @@
           <PushButton>
             <TooltipId>intro_end</TooltipId>
             <Pos>21,0</Pos>
-            <Style></Style>
             <NumberStates>2</NumberStates>
             <LeftClickIsPushButton>true</LeftClickIsPushButton>
             <RightClickIsPushButton>true</RightClickIsPushButton>
@@ -560,7 +541,6 @@
           <PushButton>
             <TooltipId>outro_start</TooltipId>
             <Pos>0,21</Pos>
-            <Style></Style>
             <NumberStates>2</NumberStates>
             <LeftClickIsPushButton>true</LeftClickIsPushButton>
             <RightClickIsPushButton>true</RightClickIsPushButton>
@@ -594,7 +574,6 @@
           <PushButton>
             <TooltipId>outro_end</TooltipId>
             <Pos>21,21</Pos>
-            <Style></Style>
             <NumberStates>2</NumberStates>
             <LeftClickIsPushButton>true</LeftClickIsPushButton>
             <RightClickIsPushButton>true</RightClickIsPushButton>

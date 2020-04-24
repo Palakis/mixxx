@@ -74,14 +74,12 @@ void MessageHandler(QtMsgType type,
                     isControllerDebug;
             shouldFlush = Logging::flushing(LogLevel::Debug);
             break;
-#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
         case QtInfoMsg:
             tag = "Info [";
             baSize += strlen(tag);
             shouldPrint = Logging::enabled(LogLevel::Info);
             shouldFlush = Logging::flushing(LogLevel::Info);
             break;
-#endif
         case QtWarningMsg:
             tag = "Warning [";
             baSize += strlen(tag);
@@ -201,8 +199,11 @@ void Logging::initialize(const QDir& settingsDir,
     // Fedora: https://bugzilla.redhat.com/show_bug.cgi?id=1227295
     // Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=886437
     // Ubuntu: https://bugs.launchpad.net/ubuntu/+source/qtbase-opensource-src/+bug/1731646
+    // Somehow this causes a segfault on macOS though?? https://bugs.launchpad.net/mixxx/+bug/1871238
+#ifdef __LINUX__
     QLoggingCategory::setFilterRules("*.debug=true\n"
                                      "qt.*.debug=false");
+#endif
 }
 
 // static

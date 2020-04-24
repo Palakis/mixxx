@@ -11,6 +11,7 @@
 #include "engine/enginebuffer.h"
 #include "engine/controls/enginecontrol.h"
 #include "engine/channels/enginedeck.h"
+#include "engine/engine.h"
 #include "engine/enginemaster.h"
 #include "track/beatgrid.h"
 #include "waveform/renderers/waveformwidgetrenderer.h"
@@ -20,6 +21,15 @@
 #include "effects/effectsmanager.h"
 #include "vinylcontrol/defs_vinylcontrol.h"
 #include "engine/sync/enginesync.h"
+
+namespace {
+
+const double kNoTrackColor = -1;
+
+inline double trackColorToDouble(mixxx::RgbColor::optional_t color) {
+    return (color ? static_cast<double>(*color) : kNoTrackColor);
+}
+}
 
 BaseTrackPlayer::BaseTrackPlayer(QObject* pParent, const QString& group)
         : BasePlayer(pParent, group) {
@@ -46,8 +56,6 @@ BaseTrackPlayerImpl::BaseTrackPlayerImpl(QObject* pParent,
                                 pEffectsManager, defaultOrientation);
 
     m_pInputConfigured = std::make_unique<ControlProxy>(group, "input_configured", this);
-    m_pPassthroughEnabled = std::make_unique<ControlProxy>(group, "passthrough", this);
-    m_pPassthroughEnabled->connectValueChanged(this, &BaseTrackPlayerImpl::slotPassthroughEnabled);
 #ifdef __VINYLCONTROL__
     m_pVinylControlEnabled = std::make_unique<ControlProxy>(group, "vinylcontrol_enabled", this);
     m_pVinylControlEnabled->connectValueChanged(this, &BaseTrackPlayerImpl::slotVinylControlEnabled);
@@ -79,34 +87,50 @@ BaseTrackPlayerImpl::BaseTrackPlayerImpl(QObject* pParent,
     m_pDuration = std::make_unique<ControlObject>(
         ConfigKey(getGroup(), "duration"));
 
+    // Track color of the current track
+    m_pTrackColor = std::make_unique<ControlObject>(
+            ConfigKey(getGroup(), "track_color"));
+
+    m_pTrackColor->set(kNoTrackColor);
+    m_pTrackColor->connectValueChangeRequest(
+            this, &BaseTrackPlayerImpl::slotTrackColorChangeRequest);
+
     // Deck cloning
     m_pCloneFromDeck = std::make_unique<ControlObject>(
-        ConfigKey(getGroup(), "CloneFromDeck"),
-        false);
-    connect(m_pCloneFromDeck.get(), &ControlObject::valueChanged,
-        this, &BaseTrackPlayerImpl::slotCloneFromDeck);
+            ConfigKey(getGroup(), "CloneFromDeck"),
+            false);
+    connect(m_pCloneFromDeck.get(),
+            &ControlObject::valueChanged,
+            this,
+            &BaseTrackPlayerImpl::slotCloneFromDeck);
 
     // Waveform controls
     // This acts somewhat like a ControlPotmeter, but the normal _up/_down methods
     // do not work properly with this CO.
-    m_pWaveformZoom = std::make_unique<ControlObject>(
-        ConfigKey(group, "waveform_zoom"));
-    m_pWaveformZoom->connectValueChangeRequest(
-        this, &BaseTrackPlayerImpl::slotWaveformZoomValueChangeRequest,
-        Qt::DirectConnection);
+    m_pWaveformZoom =
+            std::make_unique<ControlObject>(ConfigKey(group, "waveform_zoom"));
+    m_pWaveformZoom->connectValueChangeRequest(this,
+            &BaseTrackPlayerImpl::slotWaveformZoomValueChangeRequest,
+            Qt::DirectConnection);
     m_pWaveformZoom->set(1.0);
     m_pWaveformZoomUp = std::make_unique<ControlPushButton>(
-        ConfigKey(group, "waveform_zoom_up"));
-    connect(m_pWaveformZoomUp.get(), SIGNAL(valueChanged(double)),
-            this, SLOT(slotWaveformZoomUp(double)));
+            ConfigKey(group, "waveform_zoom_up"));
+    connect(m_pWaveformZoomUp.get(),
+            SIGNAL(valueChanged(double)),
+            this,
+            SLOT(slotWaveformZoomUp(double)));
     m_pWaveformZoomDown = std::make_unique<ControlPushButton>(
-        ConfigKey(group, "waveform_zoom_down"));
-    connect(m_pWaveformZoomDown.get(), SIGNAL(valueChanged(double)),
-            this, SLOT(slotWaveformZoomDown(double)));
+            ConfigKey(group, "waveform_zoom_down"));
+    connect(m_pWaveformZoomDown.get(),
+            SIGNAL(valueChanged(double)),
+            this,
+            SLOT(slotWaveformZoomDown(double)));
     m_pWaveformZoomSetDefault = std::make_unique<ControlPushButton>(
-        ConfigKey(group, "waveform_zoom_set_default"));
-    connect(m_pWaveformZoomSetDefault.get(), SIGNAL(valueChanged(double)),
-            this, SLOT(slotWaveformZoomSetDefault(double)));
+            ConfigKey(group, "waveform_zoom_set_default"));
+    connect(m_pWaveformZoomSetDefault.get(),
+            SIGNAL(valueChanged(double)),
+            this,
+            SLOT(slotWaveformZoomSetDefault(double)));
 
     m_pPreGain = std::make_unique<ControlProxy>(group, "pregain", this);
     // BPM of the current song
@@ -126,9 +150,11 @@ BaseTrackPlayerImpl::~BaseTrackPlayerImpl() {
 
 TrackPointer BaseTrackPlayerImpl::loadFakeTrack(bool bPlay, double filebpm) {
     TrackPointer pTrack(Track::newTemporary());
-    pTrack->setSampleRate(44100);
-    // 10 seconds
-    pTrack->setDuration(10);
+    pTrack->setAudioProperties(
+            mixxx::kEngineChannelCount,
+            mixxx::audio::SampleRate(44100),
+            mixxx::audio::Bitrate(),
+            mixxx::Duration::fromSeconds(10));
     if (filebpm > 0) {
         pTrack->setBpm(filebpm);
     }
@@ -137,15 +163,26 @@ TrackPointer BaseTrackPlayerImpl::loadFakeTrack(bool bPlay, double filebpm) {
     m_pLoadedTrack = pTrack;
     if (m_pLoadedTrack) {
         // Listen for updates to the file's BPM
-        connect(m_pLoadedTrack.get(), SIGNAL(bpmUpdated(double)),
-                m_pFileBPM.get(), SLOT(set(double)));
+        connect(m_pLoadedTrack.get(),
+                &Track::bpmUpdated,
+                m_pFileBPM.get(),
+                &ControlProxy::set);
 
-        connect(m_pLoadedTrack.get(), SIGNAL(keyUpdated(double)),
-                m_pKey.get(), SLOT(set(double)));
+        connect(m_pLoadedTrack.get(),
+                &Track::keyUpdated,
+                m_pKey.get(),
+                &ControlProxy::set);
 
         // Listen for updates to the file's Replay Gain
-        connect(m_pLoadedTrack.get(), SIGNAL(ReplayGainUpdated(mixxx::ReplayGain)),
-                this, SLOT(slotSetReplayGain(mixxx::ReplayGain)));
+        connect(m_pLoadedTrack.get(),
+                &Track::replayGainUpdated,
+                this,
+                &BaseTrackPlayerImpl::slotSetReplayGain);
+
+        connect(m_pLoadedTrack.get(),
+                &Track::colorUpdated,
+                this,
+                &BaseTrackPlayerImpl::slotSetTrackColor);
     }
 
     // Request a new track from EngineBuffer
@@ -153,7 +190,7 @@ TrackPointer BaseTrackPlayerImpl::loadFakeTrack(bool bPlay, double filebpm) {
     pEngineBuffer->loadFakeTrack(pTrack, bPlay);
 
     // await slotTrackLoaded()/slotLoadFailed()
-    emit(loadingTrack(pTrack, pOldTrack));
+    emit loadingTrack(pTrack, pOldTrack);
 
     return pTrack;
 }
@@ -181,7 +218,7 @@ void BaseTrackPlayerImpl::loadTrack(TrackPointer pTrack) {
         QListIterator<CuePointer> it(trackCues);
         while (it.hasNext()) {
             CuePointer pCue(it.next());
-            if (pCue->getType() == Cue::LOOP) {
+            if (pCue->getType() == mixxx::CueType::Loop) {
                 double loopStart = pCue->getPosition();
                 double loopEnd = loopStart + pCue->getLength();
                 if (loopStart != kNoTrigger && loopEnd != kNoTrigger && loopStart <= loopEnd) {
@@ -199,7 +236,6 @@ void BaseTrackPlayerImpl::loadTrack(TrackPointer pTrack) {
         m_pLoopOutPoint->set(ControlObject::get(
                 ConfigKey(m_pChannelToCloneFrom->getGroup(), "loop_end_position")));
     }
-
 
     connectLoadedTrack();
 }
@@ -220,17 +256,16 @@ TrackPointer BaseTrackPlayerImpl::unloadTrack() {
         QListIterator<CuePointer> it(cuePoints);
         while (it.hasNext()) {
             CuePointer pCue(it.next());
-            if (pCue->getType() == Cue::LOOP) {
+            if (pCue->getType() == mixxx::CueType::Loop) {
                 pLoopCue = pCue;
             }
         }
         if (!pLoopCue) {
             pLoopCue = m_pLoadedTrack->createAndAddCue();
-            pLoopCue->setSource(Cue::MANUAL);
-            pLoopCue->setType(Cue::LOOP);
+            pLoopCue->setType(mixxx::CueType::Loop);
         }
-        pLoopCue->setPosition(loopStart);
-        pLoopCue->setLength(loopEnd - loopStart);
+        pLoopCue->setStartPosition(loopStart);
+        pLoopCue->setEndPosition(loopEnd);
     }
 
     disconnectLoadedTrack();
@@ -246,12 +281,22 @@ TrackPointer BaseTrackPlayerImpl::unloadTrack() {
 }
 
 void BaseTrackPlayerImpl::connectLoadedTrack() {
-    connect(m_pLoadedTrack.get(), SIGNAL(bpmUpdated(double)),
-            m_pFileBPM.get(), SLOT(set(double)));
-    connect(m_pLoadedTrack.get(), SIGNAL(keyUpdated(double)),
-            m_pKey.get(), SLOT(set(double)));
-    connect(m_pLoadedTrack.get(), SIGNAL(ReplayGainUpdated(mixxx::ReplayGain)),
-            this, SLOT(slotSetReplayGain(mixxx::ReplayGain)));
+    connect(m_pLoadedTrack.get(),
+            &Track::bpmUpdated,
+            m_pFileBPM.get(),
+            &ControlProxy::set);
+    connect(m_pLoadedTrack.get(),
+            &Track::keyUpdated,
+            m_pKey.get(),
+            &ControlProxy::set);
+    connect(m_pLoadedTrack.get(),
+            &Track::replayGainUpdated,
+            this,
+            &BaseTrackPlayerImpl::slotSetReplayGain);
+    connect(m_pLoadedTrack.get(),
+            &Track::colorUpdated,
+            this,
+            &BaseTrackPlayerImpl::slotSetTrackColor);
 }
 
 void BaseTrackPlayerImpl::disconnectLoadedTrack() {
@@ -281,7 +326,7 @@ void BaseTrackPlayerImpl::slotLoadTrack(TrackPointer pNewTrack, bool bPlay) {
     pEngineBuffer->loadTrack(pNewTrack, bPlay);
 
     // await slotTrackLoaded()/slotLoadFailed()
-    emit(loadingTrack(pNewTrack, pOldTrack));
+    emit loadingTrack(pNewTrack, pOldTrack);
 }
 
 void BaseTrackPlayerImpl::slotLoadFailed(TrackPointer pTrack, QString reason) {
@@ -314,15 +359,16 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
 
         // Causes the track's data to be saved back to the library database and
         // for all the widgets to change the track and update themselves.
-        emit(loadingTrack(pNewTrack, pOldTrack));
+        emit loadingTrack(pNewTrack, pOldTrack);
         m_pDuration->set(0);
         m_pFileBPM->set(0);
         m_pKey->set(0);
         setReplayGain(0);
+        slotSetTrackColor(std::nullopt);
         m_pLoopInPoint->set(kNoTrigger);
         m_pLoopOutPoint->set(kNoTrigger);
         m_pLoadedTrack.reset();
-        emit(playerEmpty());
+        emit playerEmpty();
     } else if (pNewTrack && pNewTrack == m_pLoadedTrack) {
         // NOTE(uklotzde): In a previous version track metadata was reloaded
         // from the source file at this point again. This is no longer necessary
@@ -337,6 +383,7 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
         m_pFileBPM->set(m_pLoadedTrack->getBpm());
         m_pKey->set(m_pLoadedTrack->getKey());
         setReplayGain(m_pLoadedTrack->getReplayGain().getRatio());
+        slotSetTrackColor(m_pLoadedTrack->getColor());
 
         if(m_pConfig->getValue(
                 ConfigKey("[Mixer Profile]", "EqAutoReset"), false)) {
@@ -371,8 +418,8 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
                 // Avoid resetting speed if master sync is enabled and other decks with sync enabled
                 // are playing, as this would change the speed of already playing decks.
                 if (!m_pEngineMaster->getEngineSync()->otherSyncedPlaying(getGroup())) {
-                    if (m_pRateSlider != NULL) {
-                        m_pRateSlider->set(0.0);
+                    if (m_pRateRatio != NULL) {
+                        m_pRateRatio->set(1.0);
                     }
                 }
             }
@@ -385,8 +432,8 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
             // perform a clone of the given channel
 
             // copy rate
-            if (m_pRateSlider != nullptr) {
-                m_pRateSlider->set(ControlObject::get(ConfigKey(m_pChannelToCloneFrom->getGroup(), "rate")));
+            if (m_pRateRatio != nullptr) {
+                m_pRateRatio->set(ControlObject::get(ConfigKey(m_pChannelToCloneFrom->getGroup(), "rate_ratio")));
             }
 
             // copy pitch
@@ -407,7 +454,7 @@ void BaseTrackPlayerImpl::slotTrackLoaded(TrackPointer pNewTrack,
             }
         }
 
-        emit(newTrackLoaded(m_pLoadedTrack));
+        emit newTrackLoaded(m_pLoadedTrack);
     } else {
         // this is the result from an outdated load or unload signal
         // A new load is already pending
@@ -478,6 +525,27 @@ void BaseTrackPlayerImpl::slotSetReplayGain(mixxx::ReplayGain replayGain) {
     }
 }
 
+void BaseTrackPlayerImpl::slotSetTrackColor(mixxx::RgbColor::optional_t color) {
+    m_pTrackColor->forceSet(trackColorToDouble(color));
+}
+
+void BaseTrackPlayerImpl::slotTrackColorChangeRequest(double v) {
+    if (!m_pLoadedTrack) {
+        return;
+    }
+
+    mixxx::RgbColor::optional_t color = std::nullopt;
+    if (v != kNoTrackColor) {
+        auto colorCode = static_cast<mixxx::RgbColor::code_t>(v);
+        if (!mixxx::RgbColor::isValidCode(colorCode)) {
+            return;
+        }
+        color = mixxx::RgbColor::optional(colorCode);
+    }
+    m_pTrackColor->setAndConfirm(trackColorToDouble(color));
+    m_pLoadedTrack->setColor(color);
+}
+
 void BaseTrackPlayerImpl::slotPlayToggled(double v) {
     if (!v && m_replaygainPending) {
         setReplayGain(m_pLoadedTrack->getReplayGain().getRatio());
@@ -496,20 +564,8 @@ void BaseTrackPlayerImpl::setupEqControls() {
     m_pLowFilterKill = std::make_unique<ControlProxy>(group, "filterLowKill", this);
     m_pMidFilterKill = std::make_unique<ControlProxy>(group, "filterMidKill", this);
     m_pHighFilterKill = std::make_unique<ControlProxy>(group, "filterHighKill", this);
-    m_pRateSlider = std::make_unique<ControlProxy>(group, "rate", this);
+    m_pRateRatio = std::make_unique<ControlProxy>(group, "rate_ratio", this);
     m_pPitchAdjust = std::make_unique<ControlProxy>(group, "pitch_adjust", this);
-}
-
-void BaseTrackPlayerImpl::slotPassthroughEnabled(double v) {
-    bool configured = m_pInputConfigured->toBool();
-    bool passthrough = v > 0.0;
-
-    // Warn the user if they try to enable passthrough on a player with no
-    // configured input.
-    if (!configured && passthrough) {
-        m_pPassthroughEnabled->set(0.0);
-        emit(noPassthroughInputConfigured());
-    }
 }
 
 void BaseTrackPlayerImpl::slotVinylControlEnabled(double v) {
@@ -522,7 +578,7 @@ void BaseTrackPlayerImpl::slotVinylControlEnabled(double v) {
     if (!configured && vinylcontrol_enabled) {
         m_pVinylControlEnabled->set(0.0);
         m_pVinylControlStatus->set(VINYL_STATUS_DISABLED);
-        emit(noVinylControlInputConfigured());
+        emit noVinylControlInputConfigured();
     }
 #endif
 }
