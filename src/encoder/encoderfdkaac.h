@@ -12,7 +12,7 @@
 
 class EncoderFdkAac: public Encoder {
   public:
-    EncoderFdkAac(EncoderCallback* pCallback, QString pFormat);
+    EncoderFdkAac(EncoderCallback* pCallback);
     virtual ~EncoderFdkAac();
 
     int initEncoder(int samplerate, QString errorMessage) override;

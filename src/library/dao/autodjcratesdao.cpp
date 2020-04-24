@@ -34,8 +34,12 @@
 namespace {
 // Percentage of most and least played tracks to ignore [0,50)
 const int kLeastPreferredPercent = 15;
+
+// These consts are only used for DEBUG_ASSERTs
+#ifdef MIXXX_BUILD_DEBUG
 const int kLeastPreferredPercentMin = 0;
 const int kLeastPreferredPercentMax = 50;
+#endif
 } // anonymous namespace
 
 AutoDJCratesDAO::AutoDJCratesDAO(
@@ -194,8 +198,8 @@ void AutoDJCratesDAO::createAndConnectAutoDjCratesDatabase() {
 
     // Be notified when a track is modified.
     // We only care when the number of times it's been played changes.
-    connect(&m_pTrackCollection->getTrackDAO(),
-            &TrackDAO::trackDirty,
+    connect(m_pTrackCollection,
+            &TrackCollection::trackDirty,
             this,
             &AutoDJCratesDAO::slotTrackDirty);
 

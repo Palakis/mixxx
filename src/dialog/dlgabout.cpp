@@ -48,41 +48,26 @@ DlgAbout::DlgAbout(QWidget* parent) : QDialog(parent), Ui::DlgAboutDlg() {
             << "Nicu Badescu"
             << "Uwe Klotz"
             << "Be"
-            << "S&eacute;bastien Blaisot";
+            << "S&eacute;bastien Blaisot"
+            << "ronso0"
+            << "Jan Holthuis";
 
-    // This list should contains all contributors committed 
-    // code to the Mixxx core within the past two years. 
-    // New Contributors are added at the end.  
+    // This list should contains all contributors committed
+    // code to the Mixxx core within the past two years.
+    // New Contributors are added at the end.
     QStringList recentContributors;
     recentContributors
-            << "Stefan N&uuml;rnberger"
             << "Tuukka Pasanen"
             << "Nino MP"
             << "Nico Schl&ouml;mer"
             << "Ferran Pujol Camins"
-            << "Markus Kl&ouml;sges"
-            << "Pavel Potocek"
             << "Joan Marc&egrave; i Igual"
-            << "Timothy Rae"
-            << "Leigh Scott"
-            << "William Lemus"
             << "Josep Maria Antol&iacute;n Segura"
-            << "Nimit Bhardwaj"
-            << "Pavel Sokolov"
-            << "Devananda van der Veen"
-            << "Tatsuyuki Ishi"
-            << "Kilian Feess"
-            << "Conner Phillips"
             << "Daniel Poelzleithner"
-            << "Artyom Lyan"
-            << "Johan Lasperas"
-            << "Olaf Hering"
+            << "St&eacute;phane Lepin"
             << "Stefan Weber"
-            << "Eduardo Acero"
             << "Kshitij Gupta"
-            << "Thomas Jarosch"
             << "Matthew Nicholson"
-            << "ronso0"
             << "Jamie Gifford"
             << "luzpaz"
             << "Sebastian Reu&szlig;e"
@@ -93,11 +78,21 @@ DlgAbout::DlgAbout(QWidget* parent) : QDialog(parent), Ui::DlgAboutDlg() {
             << "Nikolaus Einhauser"
             << "Nik Martin"
             << "Kerrick Staley"
-            << "Jan Holthuis"
             << "Raphael Graf"
+            << "Nik Martin"
             << "YunQiang Su"
             << "Sebastian Hasler"
-            << "Philip Gottschling";
+            << "Philip Gottschling"
+            << "Melissa"
+            << "Ned Haughton"
+            << "Adam Szmigin"
+            << "Cristiano Lacerda"
+            << "Sergey Ukolov"
+            << "Ketan Lambat"
+            << "Evan Dekker"
+            << "Edward Kigwana"
+            << "Simon Harst"
+            << "Harshit Maurya";
 
     QStringList specialThanks;
     specialThanks
@@ -290,8 +285,24 @@ DlgAbout::DlgAbout(QWidget* parent) : QDialog(parent), Ui::DlgAboutDlg() {
             << "Jan Ypma"
             << "Andreas M&uuml;ller"
             << "Sam Cross"
-            << "Joey Pabalinas";
-
+            << "Joey Pabalinas"
+            << "Stefan N&uuml;rnberger"
+            << "Markus Kl&ouml;sges"
+            << "Pavel Potocek"
+            << "Timothy Rae"
+            << "Leigh Scott"
+            << "William Lemus"
+            << "Nimit Bhardwaj"
+            << "Pavel Sokolov"
+            << "Devananda van der Veen"
+            << "Tatsuyuki Ishi"
+            << "Kilian Feess"
+            << "Conner Phillips"
+            << "Artyom Lyan"
+            << "Johan Lasperas"
+            << "Olaf Hering"
+            << "Eduardo Acero"
+            << "Thomas Jarosch";
 
     QString sectionTemplate = QString(
         "<p align=\"center\"><b>%1</b></p><p align=\"center\">%2</p>");

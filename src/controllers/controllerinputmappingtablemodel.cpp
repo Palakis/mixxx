@@ -18,12 +18,13 @@ void ControllerInputMappingTableModel::apply() {
     if (m_pMidiPreset != NULL) {
         // Clear existing input mappings and insert all the input mappings in
         // the table into the preset.
-        m_pMidiPreset->inputMappings.clear();
+        QHash<uint16_t, MidiInputMapping> mappings;
         foreach (const MidiInputMapping& mapping, m_midiInputMappings) {
             // Use insertMulti because we support multiple inputs mappings for
             // the same input MidiKey.
-            m_pMidiPreset->inputMappings.insertMulti(mapping.key.key, mapping);
+            mappings.insertMulti(mapping.key.key, mapping);
         }
+        m_pMidiPreset->setInputMappings(mappings);
     }
 }
 
@@ -39,9 +40,9 @@ void ControllerInputMappingTableModel::onPresetLoaded() {
         setHeaderData(MIDI_COLUMN_ACTION, Qt::Horizontal, tr("Action"));
         setHeaderData(MIDI_COLUMN_COMMENT, Qt::Horizontal, tr("Comment"));
 
-        if (!m_pMidiPreset->inputMappings.isEmpty()) {
-            beginInsertRows(QModelIndex(), 0, m_pMidiPreset->inputMappings.size() - 1);
-            m_midiInputMappings = m_pMidiPreset->inputMappings.values();
+        if (!m_pMidiPreset->getInputMappings().isEmpty()) {
+            beginInsertRows(QModelIndex(), 0, m_pMidiPreset->getInputMappings().size() - 1);
+            m_midiInputMappings = m_pMidiPreset->getInputMappings().values();
             endInsertRows();
         }
     }
@@ -183,7 +184,6 @@ QVariant ControllerInputMappingTableModel::data(const QModelIndex& index,
         }
 
         const MidiInputMapping& mapping = m_midiInputMappings.at(row);
-        QString value;
         switch (column) {
             case MIDI_COLUMN_CHANNEL:
                 return MidiUtils::channelFromStatus(mapping.key.status);
@@ -234,29 +234,29 @@ bool ControllerInputMappingTableModel::setData(const QModelIndex& index,
                 mapping.key.status = static_cast<unsigned char>(
                     MidiUtils::opCodeFromStatus(mapping.key.status)) |
                         static_cast<unsigned char>(value.toInt());
-                emit(dataChanged(index, index));
+                emit dataChanged(index, index);
                 return true;
             case MIDI_COLUMN_OPCODE:
                 mapping.key.status = static_cast<unsigned char>(
                     MidiUtils::channelFromStatus(mapping.key.status)) |
                         static_cast<unsigned char>(value.toInt());
-                emit(dataChanged(index, index));
+                emit dataChanged(index, index);
                 return true;
             case MIDI_COLUMN_CONTROL:
                 mapping.key.control = static_cast<unsigned char>(value.toInt());
-                emit(dataChanged(index, index));
+                emit dataChanged(index, index);
                 return true;
             case MIDI_COLUMN_OPTIONS:
                 mapping.options = value.value<MidiOptions>();
-                emit(dataChanged(index, index));
+                emit dataChanged(index, index);
                 return true;
             case MIDI_COLUMN_ACTION:
                 mapping.control = value.value<ConfigKey>();
-                emit(dataChanged(index, index));
+                emit dataChanged(index, index);
                 return true;
             case MIDI_COLUMN_COMMENT:
                 mapping.description = value.toString();
-                emit(dataChanged(index, index));
+                emit dataChanged(index, index);
                 return true;
             default:
                 return false;

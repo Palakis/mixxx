@@ -19,43 +19,24 @@ const int kOutBufferBits = 6144;
 const mixxx::Logger kLogger("EncoderFdkAac");
 }
 
-EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback, QString pFormat)
-    : aacEncOpen(nullptr),
-      aacEncClose(nullptr),
-      aacEncEncode(nullptr),
-      aacEncInfo(nullptr),
-      aacEncoder_SetParam(nullptr),
-      m_aacAot(0),
-      m_bitrate(0),
-      m_channels(0),
-      m_samplerate(0),
-      m_pCallback(pCallback),
-      m_library(nullptr),
-      m_pInputFifo(nullptr),
-      m_pFifoChunkBuffer(nullptr),
-      m_readRequired(0),
-      m_aacEnc(),
-      m_pAacDataBuffer(nullptr),
-      m_aacInfo() {
-
-    if (pFormat == ENCODING_AAC) {
-        // MPEG-4 AAC-LC
-        m_aacAot = AOT_AAC_LC;
-    }
-    else if (pFormat == ENCODING_HEAAC) {
-        // MPEG-4 HE-AAC
-        m_aacAot = AOT_SBR;
-    }
-    else if (pFormat == ENCODING_HEAACV2) {
-        // MPEG-4 HE-AACv2
-        m_aacAot = AOT_PS;
-    }
-    else {
-        // Fallback to AAC-LC in case
-        // of unknown value
-        m_aacAot = AOT_AAC_LC;
-    }
-
+EncoderFdkAac::EncoderFdkAac(EncoderCallback* pCallback)
+        : aacEncOpen(nullptr),
+          aacEncClose(nullptr),
+          aacEncEncode(nullptr),
+          aacEncInfo(nullptr),
+          aacEncoder_SetParam(nullptr),
+          m_aacAot(AOT_AAC_LC),
+          m_bitrate(0),
+          m_channels(0),
+          m_samplerate(0),
+          m_pCallback(pCallback),
+          m_library(nullptr),
+          m_pInputFifo(nullptr),
+          m_pFifoChunkBuffer(nullptr),
+          m_readRequired(0),
+          m_aacEnc(),
+          m_pAacDataBuffer(nullptr),
+          m_aacInfo() {
     // Load shared library
     // Code import from encodermp3.cpp
     QStringList libnames;
@@ -222,8 +203,8 @@ QString EncoderFdkAac::buttWindowsFdkAac() {
             }
 
             kLogger.debug()
-                << "Found potential B.U.T.T installation at"
-                << (topPath + "/" + subName);  
+                    << "Found potential B.U.T.T installation at"
+                    << (topPath + "/" + subName);
 
             QString libFile = "libfdk-aac-1.dll";
             if(folder.exists(libFile)) {
@@ -240,6 +221,21 @@ QString EncoderFdkAac::buttWindowsFdkAac() {
 }
 
 void EncoderFdkAac::setEncoderSettings(const EncoderSettings& settings) {
+    if (settings.getFormat() == ENCODING_AAC) {
+        // MPEG-4 AAC-LC
+        m_aacAot = AOT_AAC_LC;
+    } else if (settings.getFormat() == ENCODING_HEAAC) {
+        // MPEG-4 HE-AAC
+        m_aacAot = AOT_SBR;
+    } else if (settings.getFormat() == ENCODING_HEAACV2) {
+        // MPEG-4 HE-AACv2
+        m_aacAot = AOT_PS;
+    } else {
+        // Fallback to AAC-LC in case
+        // of unknown value
+        m_aacAot = AOT_AAC_LC;
+    }
+
     // TODO(Palakis): support more bitrate configurations
     m_bitrate = settings.getQuality();
     switch (settings.getChannelMode()) {

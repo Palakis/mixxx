@@ -283,7 +283,7 @@ void PlayerManager::slotChangeNumDecks(double v) {
             addDeckInner();
         } while (m_decks.size() < num);
         m_pCONumDecks->setAndConfirm(m_decks.size());
-        emit(numberOfDecksChanged(m_decks.count()));
+        emit numberOfDecksChanged(m_decks.count());
     }
 }
 
@@ -370,8 +370,10 @@ void PlayerManager::addDeckInner() {
 
     Deck* pDeck = new Deck(this, m_pConfig, m_pEngine, m_pEffectsManager,
             m_pVisualsManager, orientation, group);
-    connect(pDeck, SIGNAL(noPassthroughInputConfigured()),
-            this, SIGNAL(noDeckPassthroughInputConfigured()));
+    connect(pDeck->getEngineDeck(),
+            &EngineDeck::noPassthroughInputConfigured,
+            this,
+            &PlayerManager::noDeckPassthroughInputConfigured);
     connect(pDeck, SIGNAL(noVinylControlInputConfigured()),
             this, SIGNAL(noVinylControlInputConfigured()));
 
@@ -499,6 +501,8 @@ void PlayerManager::addAuxiliaryInner() {
 
     Auxiliary* pAuxiliary = new Auxiliary(this, group, index, m_pSoundManager,
                                           m_pEngine, m_pEffectsManager);
+    connect(pAuxiliary, SIGNAL(noAuxiliaryInputConfigured()),
+            this, SIGNAL(noAuxiliaryInputConfigured()));
     m_auxiliaries.append(pAuxiliary);
 }
 
@@ -613,7 +617,7 @@ void PlayerManager::slotLoadTrackToPlayer(TrackPointer pTrack, QString group, bo
 void PlayerManager::slotLoadToPlayer(QString location, QString group) {
     // The library will get the track and then signal back to us to load the
     // track via slotLoadTrackToPlayer.
-    emit(loadLocationToPlayer(location, group));
+    emit loadLocationToPlayer(location, group);
 }
 
 void PlayerManager::slotLoadToDeck(QString location, int deck) {

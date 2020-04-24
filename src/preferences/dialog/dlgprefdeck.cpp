@@ -115,7 +115,6 @@ DlgPrefDeck::DlgPrefDeck(QWidget * parent, MixxxMainWindow * mixxx,
             this,
             &DlgPrefDeck::slotTimeFormatChanged);
 
-    QLocale locale;
     // Track Display model
     comboBoxTimeFormat->clear();
 
@@ -207,17 +206,9 @@ DlgPrefDeck::DlgPrefDeck(QWidget * parent, MixxxMainWindow * mixxx,
             this,
             SLOT(slotCloneDeckOnLoadDoubleTapCheckbox(bool)));
 
-    // Automatically assign a color to new hot cues
-    m_bAssignHotcueColors = m_pConfig->getValue(ConfigKey("[Controls]", "auto_hotcue_colors"), false);
-    checkBoxAssignHotcueColors->setChecked(m_bAssignHotcueColors);
-    connect(checkBoxAssignHotcueColors,
-            SIGNAL(toggled(bool)),
-            this,
-            SLOT(slotAssignHotcueColorsCheckbox(bool)));
-
-    m_bRateInverted = m_pConfig->getValue(ConfigKey("[Controls]", "RateDir"), false);
-    setRateDirectionForAllDecks(m_bRateInverted);
-    checkBoxInvertSpeedSlider->setChecked(m_bRateInverted);
+    m_bRateDownIncreasesSpeed = m_pConfig->getValue(ConfigKey("[Controls]", "RateDir"), true);
+    setRateDirectionForAllDecks(m_bRateDownIncreasesSpeed);
+    checkBoxInvertSpeedSlider->setChecked(m_bRateDownIncreasesSpeed);
     connect(checkBoxInvertSpeedSlider, SIGNAL(toggled(bool)),
             this, SLOT(slotRateInversionCheckbox(bool)));
 
@@ -387,9 +378,6 @@ void DlgPrefDeck::slotUpdate() {
     checkBoxCloneDeckOnLoadDoubleTap->setChecked(m_pConfig->getValue(
             ConfigKey("[Controls]", "CloneDeckOnLoadDoubleTap"), true));
 
-    checkBoxAssignHotcueColors->setChecked(m_pConfig->getValue(
-            ConfigKey("[Controls]", "auto_hotcue_colors"), false));
-
     double deck1RateRange = m_rateRangeControls[0]->get();
     int index = ComboBoxRateRange->findData(static_cast<int>(deck1RateRange * 100));
     if (index == -1) {
@@ -502,7 +490,7 @@ void DlgPrefDeck::setRateRangeForAllDecks(int rangePercent) {
 }
 
 void DlgPrefDeck::slotRateInversionCheckbox(bool inverted) {
-    m_bRateInverted = inverted;
+    m_bRateDownIncreasesSpeed = inverted;
 }
 
 void DlgPrefDeck::setRateDirectionForAllDecks(bool inverted) {
@@ -550,10 +538,6 @@ void DlgPrefDeck::slotCueModeCombobox(int index) {
 
 void DlgPrefDeck::slotCloneDeckOnLoadDoubleTapCheckbox(bool checked) {
     m_bCloneDeckOnLoadDoubleTap = checked;
-}
-
-void DlgPrefDeck::slotAssignHotcueColorsCheckbox(bool checked) {
-    m_bAssignHotcueColors = checked;
 }
 
 void DlgPrefDeck::slotSetTrackTimeDisplay(QAbstractButton* b) {
@@ -643,16 +627,15 @@ void DlgPrefDeck::slotApply() {
     m_pConfig->setValue(ConfigKey("[Controls]", "CueRecall"), static_cast<int>(m_seekOnLoadMode));
     m_pConfig->setValue(ConfigKey("[Controls]", "CloneDeckOnLoadDoubleTap"),
             m_bCloneDeckOnLoadDoubleTap);
-    m_pConfig->setValue(ConfigKey("[Controls]", "auto_hotcue_colors"), m_bAssignHotcueColors);
 
     // Set rate range
     setRateRangeForAllDecks(m_iRateRangePercent);
     m_pConfig->setValue(ConfigKey("[Controls]", "RateRangePercent"),
                         m_iRateRangePercent);
 
-    setRateDirectionForAllDecks(m_bRateInverted);
+    setRateDirectionForAllDecks(m_bRateDownIncreasesSpeed);
     m_pConfig->setValue(ConfigKey("[Controls]", "RateDir"),
-                        static_cast<int>(m_bRateInverted));
+            static_cast<int>(m_bRateDownIncreasesSpeed));
 
     int configSPAutoReset = BaseTrackPlayer::RESET_NONE;
 

@@ -145,6 +145,11 @@ TrackPointer GlobalTrackCacheLocker::lookupTrackByRef(
     return m_pInstance->lookupByRef(trackRef);
 }
 
+QSet<TrackId> GlobalTrackCacheLocker::getCachedTrackIds() const {
+    DEBUG_ASSERT(m_pInstance);
+    return m_pInstance->getCachedTrackIds();
+}
+
 GlobalTrackCacheResolver::GlobalTrackCacheResolver(
         TrackFile fileInfo,
         SecurityTokenPointer pSecurityToken)
@@ -198,12 +203,14 @@ void GlobalTrackCache::createInstance(
         GlobalTrackCacheSaver* pSaver,
         deleteTrackFn_t deleteTrackFn) {
     DEBUG_ASSERT(!s_pInstance);
+    kLogger.info() << "Creating instance";
     s_pInstance = new GlobalTrackCache(pSaver, deleteTrackFn);
 }
 
 //static
 void GlobalTrackCache::destroyInstance() {
     DEBUG_ASSERT(s_pInstance);
+    kLogger.info() << "Destroying instance";
     // Processing all pending events is required to evict all
     // remaining references from the cache.
     QCoreApplication::processEvents();
@@ -366,12 +373,8 @@ void GlobalTrackCache::saveEvictedTrack(Track* pEvictedTrack) const {
 void GlobalTrackCache::deactivate() {
     DEBUG_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
 
-    if (!isEmpty()) {
-        kLogger.warning()
-                << "Not empty when deactivating:"
-                << m_tracksById.size()
-                << '/'
-                << m_tracksByCanonicalLocation.size();
+    if (isEmpty()) {
+        return;
     }
 
     // Ideally the cache should be empty when destroyed.
@@ -380,6 +383,13 @@ void GlobalTrackCache::deactivate() {
     // referenced or not. This ensures that the eviction
     // callback is triggered for all modified tracks before
     // exiting the application.
+    kLogger.warning()
+            << "Evicting all remaining"
+            << m_tracksById.size()
+            << '/'
+            << m_tracksByCanonicalLocation.size()
+            << "tracks from cache";
+
     while (!m_tracksById.empty()) {
         auto i = m_tracksById.begin();
         Track* plainPtr= i->second->getPlainPtr();
@@ -460,6 +470,14 @@ TrackPointer GlobalTrackCache::lookupByRef(
             return TrackPointer();
         }
     }
+}
+
+QSet<TrackId> GlobalTrackCache::getCachedTrackIds() const {
+    QSet<TrackId> trackIds;
+    for (const auto& entry : m_tracksById) {
+        trackIds << entry.first;
+    }
+    return trackIds;
 }
 
 TrackPointer GlobalTrackCache::revive(

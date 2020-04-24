@@ -15,13 +15,14 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "library/stardelegate.h"
 
+#include <QPainter>
 #include <QtDebug>
 
-#include "library/tableitemdelegate.h"
-#include "library/stardelegate.h"
 #include "library/stareditor.h"
 #include "library/starrating.h"
+#include "library/tableitemdelegate.h"
 
 StarDelegate::StarDelegate(QTableView* pTableView)
         : TableItemDelegate(pTableView),
@@ -30,21 +31,16 @@ StarDelegate::StarDelegate(QTableView* pTableView)
     connect(pTableView, &QTableView::entered, this, &StarDelegate::cellEntered);
 }
 
-void StarDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
-                         const QModelIndex& index) const {
+void StarDelegate::paintItem(
+        QPainter* painter,
+        const QStyleOptionViewItem& option,
+        const QModelIndex& index) const {
     // let the editor do the painting if this cell is currently being edited
     if (index == m_currentEditedCellIndex) {
         return;
     }
-    TableItemDelegate::paint(painter, option, index);
-}
 
-void StarDelegate::paintItem(QPainter* painter, const QStyleOptionViewItem& option,
-                         const QModelIndex& index) const {
-    // let the editor do the painting if this cell is currently being edited
-    if (index == m_currentEditedCellIndex) {
-        return;
-    }
+    paintItemBackground(painter, option, index);
 
     StarRating starRating = index.data().value<StarRating>();
     starRating.paint(painter, option.rect);
@@ -87,8 +83,8 @@ void StarDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
 
 void StarDelegate::commitAndCloseEditor() {
     StarEditor* editor = qobject_cast<StarEditor*>(sender());
-    emit(commitData(editor));
-    emit(closeEditor(editor));
+    emit commitData(editor);
+    emit closeEditor(editor);
 }
 
 void StarDelegate::cellEntered(const QModelIndex& index) {

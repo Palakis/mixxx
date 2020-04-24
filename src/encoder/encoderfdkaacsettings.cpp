@@ -12,8 +12,11 @@ const char* kQualityKey = "FdkAac_Quality";
 const mixxx::Logger kLogger("EncoderFdkAacSettings");
 }
 
-EncoderFdkAacSettings::EncoderFdkAacSettings(UserSettingsPointer pConfig)
-    : m_pConfig(pConfig) {
+EncoderFdkAacSettings::EncoderFdkAacSettings(
+        UserSettingsPointer pConfig,
+        QString format)
+        : m_pConfig(pConfig),
+          m_format(std::move(format)) {
     m_qualList.append(32);
     m_qualList.append(48);
     m_qualList.append(64);
@@ -35,28 +38,6 @@ QList<int> EncoderFdkAacSettings::getQualityValues() const {
     return m_qualList;
 }
 
-void EncoderFdkAacSettings::setQualityByValue(int qualityValue) {
-    if (m_qualList.contains(qualityValue)) {
-        m_pConfig->set(
-                ConfigKey(RECORDING_PREF_KEY, kQualityKey),
-                ConfigValue(m_qualList.indexOf(qualityValue)));
-    } else {
-        kLogger.warning() << "Invalid qualityValue given: "
-                          << qualityValue << ". Ignoring it";
-    }
-}
-
-void EncoderFdkAacSettings::setQualityByIndex(int qualityIndex) {
-    if (qualityIndex >= 0 && qualityIndex < m_qualList.size()) {
-        m_pConfig->set(
-                ConfigKey(RECORDING_PREF_KEY, kQualityKey),
-                ConfigValue(qualityIndex));
-    } else {
-        kLogger.warning() << "Invalid qualityIndex given: "
-                   << qualityIndex << ". Ignoring it";
-    }
-}
-
 int EncoderFdkAacSettings::getQuality() const {
     return m_qualList.at(getQualityIndex());
 }
@@ -74,4 +55,3 @@ int EncoderFdkAacSettings::getQualityIndex() const {
     }
     return kDefaultQualityIndex;
 }
-

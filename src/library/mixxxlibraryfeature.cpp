@@ -1,26 +1,26 @@
 // mixxxlibraryfeature.cpp
 // Created 8/23/2009 by RJ Ryan (rryan@mit.edu)
 
-#include <QtDebug>
-
 #include "library/mixxxlibraryfeature.h"
 
-#include "library/parser.h"
-#include "library/library.h"
+#include <QtDebug>
+
 #include "library/basetrackcache.h"
-#include "library/librarytablemodel.h"
-#include "library/missingtablemodel.h"
-#include "library/hiddentablemodel.h"
-#include "library/queryutil.h"
 #include "library/dao/trackschema.h"
-#include "library/trackcollection.h"
-#include "library/trackcollectionmanager.h"
-#include "treeitem.h"
-#include "sources/soundsourceproxy.h"
-#include "widget/wlibrary.h"
-#include "util/dnd.h"
 #include "library/dlghidden.h"
 #include "library/dlgmissing.h"
+#include "library/hiddentablemodel.h"
+#include "library/library.h"
+#include "library/librarytablemodel.h"
+#include "library/missingtablemodel.h"
+#include "library/parser.h"
+#include "library/queryutil.h"
+#include "library/trackcollection.h"
+#include "library/trackcollectionmanager.h"
+#include "library/treeitem.h"
+#include "sources/soundsourceproxy.h"
+#include "util/dnd.h"
+#include "widget/wlibrary.h"
 
 MixxxLibraryFeature::MixxxLibraryFeature(Library* pLibrary,
                                          UserSettingsPointer pConfig)
@@ -60,6 +60,7 @@ MixxxLibraryFeature::MixxxLibraryFeature(Library* pLibrary,
             << "track_locations.fs_deleted"
             << "library." + LIBRARYTABLE_COMMENT
             << "library." + LIBRARYTABLE_MIXXXDELETED
+            << "library." + LIBRARYTABLE_COLOR
             << "library." + LIBRARYTABLE_COVERART_SOURCE
             << "library." + LIBRARYTABLE_COVERART_TYPE
             << "library." + LIBRARYTABLE_COVERART_LOCATION
@@ -95,7 +96,7 @@ MixxxLibraryFeature::MixxxLibraryFeature(Library* pLibrary,
     // These rely on the 'default' track source being present.
     m_pLibraryTableModel = new LibraryTableModel(this, pLibrary->trackCollections(), "mixxx.db.model.library");
 
-    auto pRootItem = std::make_unique<TreeItem>(this);
+    std::unique_ptr<TreeItem> pRootItem = TreeItem::newRoot(this);
     pRootItem->appendChild(kMissingTitle);
     pRootItem->appendChild(kHiddenTitle);
 
@@ -147,19 +148,19 @@ void MixxxLibraryFeature::refreshLibraryModels() {
 
 void MixxxLibraryFeature::activate() {
     qDebug() << "MixxxLibraryFeature::activate()";
-    emit(showTrackModel(m_pLibraryTableModel));
-    emit(enableCoverArtDisplay(true));
+    emit showTrackModel(m_pLibraryTableModel);
+    emit enableCoverArtDisplay(true);
 }
 
 void MixxxLibraryFeature::activateChild(const QModelIndex& index) {
     QString itemName = index.data().toString();
-    emit(switchToView(itemName));
+    emit switchToView(itemName);
     if (m_pMissingView && itemName == kMissingTitle) {
-        emit(restoreSearch(m_pMissingView->currentSearch()));
+        emit restoreSearch(m_pMissingView->currentSearch());
     } else if (m_pHiddenView && itemName == kHiddenTitle) {
-        emit(restoreSearch(m_pHiddenView->currentSearch()));
+        emit restoreSearch(m_pHiddenView->currentSearch());
     }
-    emit(enableCoverArtDisplay(true));
+    emit enableCoverArtDisplay(true);
 }
 
 bool MixxxLibraryFeature::dropAccept(QList<QUrl> urls, QObject* pSource) {
